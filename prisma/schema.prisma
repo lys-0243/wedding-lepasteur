@@ -1,0 +1,119 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  email     String   @unique
+  name      String?
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  events    Event[]
+}
+
+model Event {
+  id        String      @id @default(cuid())
+  userId    String
+  title     String
+  slug      String      @unique
+  eventDate DateTime?
+  venue     String?
+  status    EventStatus @default(DRAFT)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  drinks    Drink[]
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  guests    Guest[]
+  tables    Table[]
+}
+
+model Table {
+  id       String  @id @default(cuid())
+  eventId  String
+  name     String
+  capacity Int
+  guests   Guest[]
+  event    Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, name])
+}
+
+model Guest {
+  id                String         @id @default(cuid())
+  eventId           String
+  tableId           String?
+  token             String         @unique @default(cuid())
+  firstName         String
+  lastName          String
+  email             String?
+  phone             String?
+  invitationType    InvitationType @default(SINGLE)
+  plusOneFirstName  String?
+  plusOneLastName   String?
+  rsvpStatus        RsvpStatus     @default(PENDING)
+  rsvpMessage       String?
+  respondedAt       DateTime?
+  plusOneRsvpStatus RsvpStatus?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  event             Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  table             Table?         @relation(fields: [tableId], references: [id])
+  drinks            GuestDrink[]
+
+  @@index([eventId])
+  @@index([token])
+  @@index([tableId])
+}
+
+model GuestDrink {
+  id         String        @id @default(cuid())
+  guestId    String
+  drinkId    String
+  assignedTo DrinkAssignee @default(PRIMARY)
+  quantity   Int           @default(1)
+  drink      Drink         @relation(fields: [drinkId], references: [id], onDelete: Cascade)
+  guest      Guest         @relation(fields: [guestId], references: [id], onDelete: Cascade)
+
+  @@unique([guestId, drinkId, assignedTo])
+}
+
+model Drink {
+  id          String       @id @default(cuid())
+  eventId     String
+  name        String
+  category    String?
+  isAlcoholic Boolean      @default(true)
+  event       Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  guestDrinks GuestDrink[]
+
+  @@unique([eventId, name])
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum InvitationType {
+  SINGLE
+  COUPLE
+}
+
+enum RsvpStatus {
+  PENDING
+  CONFIRMED
+  DECLINED
+}
+
+enum DrinkAssignee {
+  PRIMARY
+  PLUS_ONE
+}
