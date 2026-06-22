@@ -1,32 +1,57 @@
 import Link from "next/link";
-import { CalendarCheck2, CircleAlert, Sparkles, Wrench, LogOut } from "lucide-react";
+import {
+  CalendarCheck2,
+  CircleAlert,
+  Sparkles,
+  Wrench,
+  LogOut,
+} from "lucide-react";
 import { logoutAction } from "@/app/(auth)/actions";
+import { requireUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
-const upcomingEvents = [
-  {
-    id: "event-1",
-    title: "Mariage de Sarah & Adam",
-    description: "Suivi invitations et relance RSVP en attente.",
-    time: "Dans 1h",
-    icon: Sparkles,
-  },
-  {
-    id: "event-2",
-    title: "Brunch du lendemain",
-    description: "Validation des boissons et ajustement des quantites.",
-    time: "Dans 3h",
-    icon: CalendarCheck2,
-  },
-  {
-    id: "event-3",
-    title: "Soiree de bienvenue",
-    description: "Mise a jour du plan de table avant envoi final.",
-    time: "Dans 5h",
-    icon: Wrench,
-  },
-];
+const eventIcons = [Sparkles, CalendarCheck2, Wrench];
 
-export default function Home() {
+function formatEventDate(date: Date | null) {
+  if (!date) {
+    return "Date a definir";
+  }
+
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(date);
+}
+
+export default async function Home() {
+  const user = await requireUser();
+
+  const events = await prisma.event.findMany({
+    where: { userId: user.id },
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      eventDate: true,
+      createdAt: true,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
+  const sortedEvents = [...events].sort((a, b) => {
+    const left = a.eventDate ? a.eventDate.getTime() : -Infinity;
+    const right = b.eventDate ? b.eventDate.getTime() : -Infinity;
+
+    if (right !== left) {
+      return right - left;
+    }
+
+    return b.createdAt.getTime() - a.createdAt.getTime();
+  });
+
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-linear-to-b from-[#DDF4F2] via-[#EAEFF9] to-[#DCCBF4] px-4 py-6 sm:px-6">
       <div
@@ -47,13 +72,13 @@ export default function Home() {
             </h1>
             <Link
               href="/events/new"
-              className="inline-flex h-9 items-center justify-center rounded-lg border border-[#E3E7EE] bg-white px-3 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 sm:h-10 sm:px-3.5 sm:text-sm"
+              className="inline-flex h-9 items-center justify-center rounded-lg border border-[#A27AFA] bg-[#AF8BFF] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#9E76FF] sm:h-10 sm:px-3.5 sm:text-sm"
             >
               Creer un evenement
             </Link>
           </div>
 
-          <div className="mb-4 grid grid-cols-3 gap-1.5 rounded-xl bg-[#E6EBF3] p-1">
+          <div className="mb-4 grid grid-cols-2 gap-1.5 rounded-xl bg-[#E6EBF3] p-1">
             <button
               type="button"
               className="rounded-lg bg-white px-2.5 py-1.5 text-sm font-semibold text-slate-700 shadow-[0_1px_0_rgba(0,0,0,0.05)]"
@@ -64,47 +89,51 @@ export default function Home() {
               type="button"
               className="rounded-lg px-2.5 py-1.5 text-sm font-medium text-slate-500 transition-colors hover:text-slate-700"
             >
-              Passes
-            </button>
-            <button
-              type="button"
-              className="rounded-lg px-2.5 py-1.5 text-sm font-medium text-slate-400"
-            >
-              Tous
+              Passés
             </button>
           </div>
 
           <div className="space-y-0.5">
-            {upcomingEvents.map((event, index) => {
-              const Icon = event.icon;
+            {sortedEvents.length === 0 && (
+              <div className="rounded-xl border border-dashed border-[#DCE2ED] bg-white px-4 py-6 text-center text-sm text-slate-500">
+                Aucun evenement pour le moment. Creez votre premier evenement.
+              </div>
+            )}
+
+            {sortedEvents.map((event, index) => {
+              const Icon = eventIcons[index % eventIcons.length];
 
               return (
-                <article
-                  key={event.id}
-                  className="grid grid-cols-[auto_1fr_auto] items-start gap-3 py-3"
-                >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[#E4E7EC] bg-white text-slate-500 shadow-[inset_0_-2px_0_rgba(0,0,0,0.03)]">
-                    <Icon className="h-4.5 w-4.5" />
-                  </div>
+                <div key={event.id}>
+                  <Link
+                    href={`/events/${event.id}`}
+                    className="block rounded-xl px-1 transition-colors hover:bg-white/70"
+                  >
+                    <article className="grid grid-cols-[auto_1fr_auto] items-start gap-3 py-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[#E4E7EC] bg-white text-slate-500 shadow-[inset_0_-2px_0_rgba(0,0,0,0.03)]">
+                        <Icon className="h-4.5 w-4.5" />
+                      </div>
 
-                  <div>
-                    <p className="mb-0.5 flex items-center gap-1.5 text-base font-semibold leading-tight tracking-[-0.02em] text-slate-800 sm:text-[1.05rem]">
-                      <CircleAlert className="h-3 w-3 fill-[#AF8BFF] text-[#AF8BFF]" />
-                      {event.title}
-                    </p>
-                    <p className="max-w-md text-sm leading-snug text-slate-500 sm:text-[0.95rem]">
-                      {event.description}
-                    </p>
-                  </div>
+                      <div>
+                        <p className="mb-0.5 flex items-center gap-1.5 text-base font-semibold leading-tight tracking-[-0.02em] text-slate-800 sm:text-[1.05rem]">
+                          <CircleAlert className="h-3 w-3 fill-[#AF8BFF] text-[#AF8BFF]" />
+                          {event.title}
+                        </p>
+                        <p className="max-w-md text-sm leading-snug text-slate-500 sm:text-[0.95rem]">
+                          {event.description}
+                        </p>
+                      </div>
 
-                  <p className="pt-0.5 text-xs font-medium text-slate-400 sm:text-sm">
-                    {event.time}
-                  </p>
+                      <p className="pt-0.5 text-xs font-medium text-slate-400 sm:text-sm">
+                        {formatEventDate(event.eventDate)}
+                      </p>
+                    </article>
+                  </Link>
 
-                  {index < upcomingEvents.length - 1 && (
-                    <div className="col-span-3 mt-2 h-px bg-[#E6EAF1]" />
+                  {index < sortedEvents.length - 1 && (
+                    <div className="mt-2 h-px bg-[#E6EAF1]" />
                   )}
-                </article>
+                </div>
               );
             })}
           </div>

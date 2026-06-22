@@ -58,7 +58,7 @@ export async function createEventAction(formData: FormData) {
 
   const slug = await createUniqueSlug(title);
 
-  await prisma.event.create({
+  const event = await prisma.event.create({
     data: {
       userId: user.id,
       title,
@@ -69,7 +69,10 @@ export async function createEventAction(formData: FormData) {
       profileImageUrl: asOptionalText(formData.get("profileImageUrl")),
       coverImageUrl: asOptionalText(formData.get("coverImageUrl")),
     },
+    select: {
+      id: true,
+    },
   });
 
-  redirect("/");
+  redirect(`/events/${event.id}`);
 }
