@@ -96,7 +96,9 @@ export default async function EventPage({ params }: EventPageProps) {
               <p className="mb-1 text-xs font-semibold uppercase tracking-[0.06em] text-slate-500">
                 Lieu
               </p>
-              <p className="text-sm font-medium text-slate-700">{event.venue ?? "A definir"}</p>
+              <p className="text-sm font-medium text-slate-700">
+                {event.venue ?? "A definir"}
+              </p>
             </div>
           </div>
 
@@ -112,7 +114,9 @@ export default async function EventPage({ params }: EventPageProps) {
                 <Users className="h-4 w-4 text-[#AF8BFF]" />
                 Invites
               </p>
-              <p className="text-2xl font-semibold text-slate-800">{event._count.guests}</p>
+              <p className="text-2xl font-semibold text-slate-800">
+                {event._count.guests}
+              </p>
             </article>
 
             <article className="rounded-xl border border-[#E3E8F0] bg-white p-4">
@@ -120,7 +124,9 @@ export default async function EventPage({ params }: EventPageProps) {
                 <GlassWater className="h-4 w-4 text-[#AF8BFF]" />
                 Boissons
               </p>
-              <p className="text-2xl font-semibold text-slate-800">{event._count.drinks}</p>
+              <p className="text-2xl font-semibold text-slate-800">
+                {event._count.drinks}
+              </p>
             </article>
 
             <article className="rounded-xl border border-[#E3E8F0] bg-white p-4">
@@ -128,7 +134,9 @@ export default async function EventPage({ params }: EventPageProps) {
                 <Armchair className="h-4 w-4 text-[#AF8BFF]" />
                 Tables
               </p>
-              <p className="text-2xl font-semibold text-slate-800">{event._count.tables}</p>
+              <p className="text-2xl font-semibold text-slate-800">
+                {event._count.tables}
+              </p>
             </article>
           </div>
         </div>
