@@ -8,7 +8,7 @@ const isPublicRoute = createRouteMatcher([
   "/api/invite/(.*)",
 ]);
 
-export function proxy(request: Request) {}
+export function proxy() {}
 
 export default clerkMiddleware(async (auth, request) => {
   if (!isPublicRoute(request)) {

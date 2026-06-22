@@ -8,8 +8,34 @@ export async function getCurrentUser() {
     return null;
   }
 
-  const user = await prisma.user.findUnique({
+  // Try to find the existing user first
+  const existing = await prisma.user.findUnique({
     where: { clerkId: clerkUser.id },
+  });
+
+  if (existing) {
+    return existing;
+  }
+
+  // User signed in via Clerk but has no DB record yet – create one on the fly
+  const email =
+    clerkUser.emailAddresses.find(
+      (e) => e.id === clerkUser.primaryEmailAddressId
+    )?.emailAddress ?? clerkUser.emailAddresses[0]?.emailAddress;
+
+  if (!email) {
+    return null;
+  }
+
+  const user = await prisma.user.create({
+    data: {
+      clerkId: clerkUser.id,
+      email,
+      name:
+        [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(" ") ||
+        null,
+      avatarUrl: clerkUser.imageUrl ?? null,
+    },
   });
 
   return user;
