@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { createEventAction } from "./actions";
 import { NewEventForm } from "./new-event-form";
+import { LogOut } from "lucide-react";
+import { logoutAction } from "@/app/(auth)/actions";
 
 export default function NewEventPage() {
   return (
@@ -32,6 +34,18 @@ export default function NewEventPage() {
           <NewEventForm action={createEventAction} />
         </div>
       </section>
+
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+        <form action={logoutAction}>
+          <button
+            type="submit"
+            className="flex items-center gap-2 rounded-full border border-slate-200/80 bg-white/60 px-4 py-2 text-xs font-semibold text-slate-500 shadow-md backdrop-blur-md transition-all duration-200 hover:scale-105 hover:bg-white/80 hover:text-slate-800 active:scale-95 cursor-pointer"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+            Déconnexion
+          </button>
+        </form>
+      </div>
     </main>
   );
 }

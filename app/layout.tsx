@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { ClerkProvider } from "@clerk/nextjs";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -21,13 +20,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
-      <html lang="fr" className={`${inter.variable} h-full antialiased`}>
-        <body className="min-h-full flex flex-col">
-          {children}
-          <Toaster />
-        </body>
-      </html>
-    </ClerkProvider>
+    <html lang="fr" className={`${inter.variable} h-full antialiased`}>
+      <body className="min-h-full flex flex-col">
+        {children}
+        <Toaster />
+      </body>
+    </html>
   );
 }

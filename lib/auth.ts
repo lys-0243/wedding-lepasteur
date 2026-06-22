@@ -1,51 +1,40 @@
-import { currentUser } from "@clerk/nextjs/server";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { verifyToken } from "@/lib/auth-utils";
 
 export async function getCurrentUser() {
-  const clerkUser = await currentUser();
+  try {
+    const cookieStore = await cookies();
+    const sessionToken = cookieStore.get("session")?.value;
 
-  if (!clerkUser) {
+    if (!sessionToken) {
+      return null;
+    }
+
+    const jwtSecret = process.env.JWT_SECRET || "fallback_secret_at_least_32_chars_long";
+    const payload = await verifyToken(sessionToken, jwtSecret);
+
+    if (!payload || !payload.userId) {
+      return null;
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+    });
+
+    return user;
+  } catch (error) {
+    console.error("Error in getCurrentUser:", error);
     return null;
   }
-
-  // Try to find the existing user first
-  const existing = await prisma.user.findUnique({
-    where: { clerkId: clerkUser.id },
-  });
-
-  if (existing) {
-    return existing;
-  }
-
-  // User signed in via Clerk but has no DB record yet – create one on the fly
-  const email =
-    clerkUser.emailAddresses.find(
-      (e) => e.id === clerkUser.primaryEmailAddressId
-    )?.emailAddress ?? clerkUser.emailAddresses[0]?.emailAddress;
-
-  if (!email) {
-    return null;
-  }
-
-  const user = await prisma.user.create({
-    data: {
-      clerkId: clerkUser.id,
-      email,
-      name:
-        [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(" ") ||
-        null,
-      avatarUrl: clerkUser.imageUrl ?? null,
-    },
-  });
-
-  return user;
 }
 
 export async function requireUser() {
   const user = await getCurrentUser();
 
   if (!user) {
-    throw new Error("Unauthorized");
+    redirect("/sign-in");
   }
 
   return user;

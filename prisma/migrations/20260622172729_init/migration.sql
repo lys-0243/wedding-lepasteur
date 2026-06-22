@@ -13,8 +13,8 @@ CREATE TYPE "DrinkAssignee" AS ENUM ('PRIMARY', 'PLUS_ONE');
 -- CreateTable
 CREATE TABLE "User" (
     "id" TEXT NOT NULL,
-    "clerkId" TEXT NOT NULL,
     "email" TEXT NOT NULL,
+    "passwordHash" TEXT NOT NULL,
     "name" TEXT,
     "avatarUrl" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -31,6 +31,9 @@ CREATE TABLE "Event" (
     "slug" TEXT NOT NULL,
     "eventDate" TIMESTAMP(3),
     "venue" TEXT,
+    "description" TEXT,
+    "profileImageUrl" TEXT,
+    "coverImageUrl" TEXT,
     "status" "EventStatus" NOT NULL DEFAULT 'DRAFT',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -94,9 +97,6 @@ CREATE TABLE "Drink" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "User_clerkId_key" ON "User"("clerkId");
-
--- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
 -- CreateIndex
@@ -136,10 +136,10 @@ ALTER TABLE "Guest" ADD CONSTRAINT "Guest_eventId_fkey" FOREIGN KEY ("eventId") 
 ALTER TABLE "Guest" ADD CONSTRAINT "Guest_tableId_fkey" FOREIGN KEY ("tableId") REFERENCES "Table"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "GuestDrink" ADD CONSTRAINT "GuestDrink_guestId_fkey" FOREIGN KEY ("guestId") REFERENCES "Guest"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "GuestDrink" ADD CONSTRAINT "GuestDrink_drinkId_fkey" FOREIGN KEY ("drinkId") REFERENCES "Drink"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "GuestDrink" ADD CONSTRAINT "GuestDrink_drinkId_fkey" FOREIGN KEY ("drinkId") REFERENCES "Drink"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "GuestDrink" ADD CONSTRAINT "GuestDrink_guestId_fkey" FOREIGN KEY ("guestId") REFERENCES "Guest"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Drink" ADD CONSTRAINT "Drink_eventId_fkey" FOREIGN KEY ("eventId") REFERENCES "Event"("id") ON DELETE CASCADE ON UPDATE CASCADE;
