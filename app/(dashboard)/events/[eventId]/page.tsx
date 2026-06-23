@@ -83,7 +83,7 @@ export default async function EventDashboardPage({ params }: EventPageProps) {
           />
         )}
         {/* Subtle gradient overlay at the bottom for readability */}
-        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/30 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-24 bg-linear-to-t from-black/30 to-transparent" />
       </div>
 
       {/* ── Profile strip (avatar + title) ──────────────────────────── */}
@@ -98,7 +98,7 @@ export default async function EventDashboardPage({ params }: EventPageProps) {
               className="h-24 w-24 rounded-full object-cover ring-4 ring-white shadow-lg lg:h-38 lg:w-38"
             />
           ) : (
-            <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-[#534AB7] to-[#AF8BFF] ring-4 ring-white shadow-lg lg:h-28 lg:w-28">
+            <div className="flex h-24 w-24 items-center justify-center rounded-full bg-linear-to-br from-[#534AB7] to-[#AF8BFF] ring-4 ring-white shadow-lg lg:h-28 lg:w-28">
               <span className="text-2xl font-bold text-white lg:text-3xl">
                 {event.title.slice(0, 2).toUpperCase()}
               </span>

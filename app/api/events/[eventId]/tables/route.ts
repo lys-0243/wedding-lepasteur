@@ -23,11 +23,21 @@ export async function GET(_req: NextRequest, { params }: RouteContext) {
 
   const tables = await prisma.table.findMany({
     where: { eventId },
-    include: { _count: { select: { guests: true } } },
+    include: { guests: { select: { invitationType: true } } },
     orderBy: { name: "asc" },
   });
 
-  return NextResponse.json(tables);
+  const mapped = tables.map((t) => ({
+    id: t.id,
+    eventId: t.eventId,
+    name: t.name,
+    capacity: t.capacity,
+    _count: {
+      guests: t.guests.reduce((sum, g) => sum + (g.invitationType === "COUPLE" ? 2 : 1), 0),
+    },
+  }));
+
+  return NextResponse.json(mapped);
 }
 
 // POST /api/events/[eventId]/tables — create a single table
@@ -52,9 +62,14 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
   try {
     const table = await prisma.table.create({
       data: { eventId, name, capacity },
-      include: { _count: { select: { guests: true } } },
     });
-    return NextResponse.json(table, { status: 201 });
+    return NextResponse.json(
+      {
+        ...table,
+        _count: { guests: 0 },
+      },
+      { status: 201 }
+    );
   } catch {
     return NextResponse.json(
       { error: "Une table avec ce nom existe déjà." },

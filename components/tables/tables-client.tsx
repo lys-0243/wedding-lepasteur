@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useTransition } from "react";
-import { Plus, Upload, Pencil, Trash2, Users, FileSpreadsheet, X, AlertTriangle } from "lucide-react";
+import Link from "next/link";
+import { Plus, Upload, Pencil, Trash2, Users, FileSpreadsheet, X, AlertTriangle, Download } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
@@ -58,6 +59,24 @@ export function TablesClient({ eventId, initialTables }: Props) {
   const [mappedColumns, setMappedColumns] = useState({ name: "", capacity: "" });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function handleExportExcel() {
+    try {
+      const exportData = tables.map((t) => ({
+        "Nom de la table": t.name,
+        "Capacité": t.capacity,
+        "Nombre d'invités": t._count.guests,
+      }));
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Tables");
+      XLSX.writeFile(workbook, `tables-evenement-${eventId}.xlsx`);
+      toast.success("La liste des tables a été exportée.");
+    } catch (err) {
+      console.error(err);
+      toast.error("Impossible d'exporter la liste des tables.");
+    }
+  }
 
   // ── Refresh helper ─────────────────────────────────────────────────────────
   async function refreshTables() {
@@ -316,6 +335,17 @@ export function TablesClient({ eventId, initialTables }: Props) {
             Importer Excel
           </Button>
 
+          {/* Export Excel Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportExcel}
+            className="gap-2 border-[#E8ECF4] text-slate-600 hover:bg-slate-50 cursor-pointer h-10 px-4 rounded-xl"
+          >
+            <Download className="h-4 w-4" />
+            Exporter Excel
+          </Button>
+
           {/* Add table */}
           <Button
             size="sm"
@@ -399,9 +429,12 @@ export function TablesClient({ eventId, initialTables }: Props) {
                   </span>
 
                   {/* Name */}
-                  <span className="truncate text-sm font-semibold text-slate-800">
+                  <Link
+                    href={`/events/${eventId}/tables/${table.id}`}
+                    className="truncate text-sm font-semibold text-slate-800 hover:text-[#1E5FF5] hover:underline cursor-pointer"
+                  >
                     {table.name}
-                  </span>
+                  </Link>
 
                   {/* Capacity */}
                   <span className="text-center text-sm text-slate-600">
