@@ -1,0 +1,42 @@
+import { notFound } from "next/navigation";
+import { requireUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { Sidebar } from "./sidebar";
+
+type LayoutProps = {
+  children: React.ReactNode;
+  params: Promise<{ eventId: string }>;
+};
+
+export const dynamic = "force-dynamic";
+
+export default async function EventLayout({ children, params }: LayoutProps) {
+  const user = await requireUser();
+  const { eventId } = await params;
+
+  const event = await prisma.event.findFirst({
+    where: { id: eventId, userId: user.id },
+    select: { id: true, title: true },
+  });
+
+  if (!event) notFound();
+
+  return (
+    <div className="flex h-screen overflow-hidden bg-[#F4F6FB]">
+      {/* ── Sidebar ── */}
+      <Sidebar
+        eventId={event.id}
+        user={{
+          name: user.name,
+          email: user.email,
+          avatarUrl: user.avatarUrl ?? null,
+        }}
+      />
+
+      {/* ── Main content ── */}
+      <main className="flex-1 overflow-y-auto">
+        {children}
+      </main>
+    </div>
+  );
+}

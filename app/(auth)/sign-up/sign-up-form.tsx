@@ -1,13 +1,14 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import Link from "next/link";
 import { useFormStatus } from "react-dom";
-import { Camera, Loader2, Eye, EyeOff } from "lucide-react";
+import { Camera, Loader2, Eye, EyeOff, X } from "lucide-react";
 import { signupAction } from "../actions";
 
-const imagekitPublicKey = process.env.NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY;
-const imagekitFolder = process.env.NEXT_PUBLIC_IMAGEKIT_FOLDER ?? "wedding";
+const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ?? "";
+const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET ?? "";
+const FOLDER = process.env.NEXT_PUBLIC_CLOUDINARY_FOLDER ?? "wedding";
 
 function SubmitButton({ disabled }: { disabled: boolean }) {
   const { pending } = useFormStatus();
@@ -30,78 +31,44 @@ export function SignUpForm() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const onPickFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (!file) return;
-
-    if (!imagekitPublicKey) {
-      setUploadError("Configuration ImageKit manquante.");
-      return;
-    }
 
     setUploadError(null);
     setUploading(true);
 
     try {
-      // Get authentication parameters from our route handler
-      const authResponse = await fetch("/api/imagekit/auth", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          fileName: file.name,
-          folder: imagekitFolder,
-          useUniqueFileName: true,
-        }),
-      });
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", UPLOAD_PRESET);
+      formData.append("folder", FOLDER);
 
-      const authPayload = (await authResponse.json()) as {
-        token?: string;
-        error?: string;
-      };
-
-      if (!authResponse.ok || !authPayload.token) {
-        throw new Error(
-          authPayload.error ?? "Impossible de générer le token ImageKit.",
-        );
-      }
-
-      // Upload directly to ImageKit
-      const uploadBody = new FormData();
-      uploadBody.append("file", file);
-      uploadBody.append("fileName", file.name);
-      uploadBody.append("folder", imagekitFolder);
-      uploadBody.append("useUniqueFileName", "true");
-      uploadBody.append("token", authPayload.token);
-
-      const response = await fetch(
-        "https://upload.imagekit.io/api/v2/files/upload",
-        {
-          method: "POST",
-          body: uploadBody,
-        },
+      const res = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
+        { method: "POST", body: formData }
       );
 
-      const payload = (await response.json()) as {
-        url?: string;
+      const data = (await res.json()) as {
+        secure_url?: string;
         error?: { message?: string };
       };
 
-      if (!response.ok || !payload.url) {
-        throw new Error(
-          payload.error?.message ?? "Upload ImageKit impossible.",
-        );
+      if (!res.ok || !data.secure_url) {
+        throw new Error(data.error?.message ?? "Échec de l'upload.");
       }
 
-      setAvatarUrl(payload.url);
-    } catch (error) {
+      setAvatarUrl(data.secure_url);
+    } catch (err) {
       setUploadError(
-        error instanceof Error ? error.message : "Erreur lors de l'upload.",
+        err instanceof Error ? err.message : "Erreur lors de l'upload."
       );
     } finally {
       setUploading(false);
+      // Reset so the same file can be re-selected
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -118,29 +85,51 @@ export function SignUpForm() {
         </div>
 
         <form action={formAction} className="grid gap-4">
-          {/* Avatar upload */}
+          {/* Avatar upload — native file picker → upload to Cloudinary */}
           <div className="flex flex-col items-center gap-2 mb-2">
-            <div className="group relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-dashed border-[#B7C4E0] bg-white text-slate-400 hover:border-[#534AB7] hover:text-[#534AB7] transition-all">
-              {avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={avatarUrl}
-                  alt="Avatar preview"
-                  className="h-full w-full object-cover"
-                />
-              ) : uploading ? (
-                <Loader2 className="h-6 w-6 animate-spin text-[#534AB7]" />
-              ) : (
-                <Camera className="h-6 w-6" />
-              )}
-              <input
-                type="file"
-                accept="image/*"
-                onChange={onPickFile}
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleFileChange}
+            />
+
+            {/* Avatar circle */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
-                className="absolute inset-0 cursor-pointer opacity-0"
-              />
+                className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-dashed border-[#B7C4E0] bg-white text-slate-400 transition-all hover:border-[#534AB7] hover:text-[#534AB7] disabled:opacity-60 cursor-pointer"
+              >
+                {avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={avatarUrl}
+                    alt="Avatar preview"
+                    className="h-full w-full object-cover"
+                  />
+                ) : uploading ? (
+                  <Loader2 className="h-6 w-6 animate-spin text-[#534AB7]" />
+                ) : (
+                  <Camera className="h-6 w-6" />
+                )}
+              </button>
+
+              {/* Remove button */}
+              {avatarUrl && !uploading && (
+                <button
+                  type="button"
+                  onClick={() => setAvatarUrl("")}
+                  className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow hover:bg-red-600 transition-colors"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
             </div>
+
             <span className="text-[0.7rem] font-semibold text-slate-500">
               {uploading
                 ? "Chargement..."
@@ -148,14 +137,12 @@ export function SignUpForm() {
                   ? "Changer de photo"
                   : "Ajouter une photo (optionnel)"}
             </span>
+
             <input type="hidden" name="avatarUrl" value={avatarUrl} />
           </div>
 
           <div className="grid gap-1.5">
-            <label
-              htmlFor="name"
-              className="text-sm font-semibold text-slate-700"
-            >
+            <label htmlFor="name" className="text-sm font-semibold text-slate-700">
               Nom complet
             </label>
             <input
@@ -168,10 +155,7 @@ export function SignUpForm() {
           </div>
 
           <div className="grid gap-1.5">
-            <label
-              htmlFor="email"
-              className="text-sm font-semibold text-slate-700"
-            >
+            <label htmlFor="email" className="text-sm font-semibold text-slate-700">
               Adresse email *
             </label>
             <input
@@ -185,10 +169,7 @@ export function SignUpForm() {
           </div>
 
           <div className="grid gap-1.5">
-            <label
-              htmlFor="password"
-              className="text-sm font-semibold text-slate-700"
-            >
+            <label htmlFor="password" className="text-sm font-semibold text-slate-700">
               Mot de passe *
             </label>
             <div className="relative">
@@ -202,28 +183,17 @@ export function SignUpForm() {
               />
               <button
                 type="button"
-                onClick={() => setShowPassword((prev) => !prev)}
-                aria-label={
-                  showPassword
-                    ? "Masquer le mot de passe"
-                    : "Afficher le mot de passe"
-                }
+                onClick={() => setShowPassword((p) => !p)}
+                aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
                 className="absolute inset-y-0 right-0 inline-flex w-10 items-center justify-center text-slate-500 transition-colors hover:text-slate-700"
               >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
           </div>
 
           <div className="grid gap-1.5">
-            <label
-              htmlFor="passwordConfirm"
-              className="text-sm font-semibold text-slate-700"
-            >
+            <label htmlFor="passwordConfirm" className="text-sm font-semibold text-slate-700">
               Confirmer le mot de passe *
             </label>
             <div className="relative">
@@ -237,19 +207,11 @@ export function SignUpForm() {
               />
               <button
                 type="button"
-                onClick={() => setShowConfirmPassword((prev) => !prev)}
-                aria-label={
-                  showConfirmPassword
-                    ? "Masquer la confirmation"
-                    : "Afficher la confirmation"
-                }
+                onClick={() => setShowConfirmPassword((p) => !p)}
+                aria-label={showConfirmPassword ? "Masquer la confirmation" : "Afficher la confirmation"}
                 className="absolute inset-y-0 right-0 inline-flex w-10 items-center justify-center text-slate-500 transition-colors hover:text-slate-700"
               >
-                {showConfirmPassword ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
+                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
           </div>
@@ -273,10 +235,7 @@ export function SignUpForm() {
           <div className="text-center mt-2">
             <p className="text-xs text-slate-500">
               Déjà un compte ?{" "}
-              <Link
-                href="/sign-in"
-                className="font-semibold text-[#534AB7] hover:underline"
-              >
+              <Link href="/sign-in" className="font-semibold text-[#534AB7] hover:underline">
                 Se connecter
               </Link>
             </p>

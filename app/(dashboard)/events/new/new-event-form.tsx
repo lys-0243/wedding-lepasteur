@@ -1,16 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { ImagePlus, Loader2, X } from "lucide-react";
 
 type NewEventFormProps = {
   action: (formData: FormData) => Promise<void>;
 };
 
-type UploadKind = "profileImageUrl" | "coverImageUrl";
-
-const imagekitPublicKey = process.env.NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY;
-const imagekitFolder = process.env.NEXT_PUBLIC_IMAGEKIT_FOLDER ?? "wedding";
+const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ?? "";
+const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET ?? "";
+const FOLDER = process.env.NEXT_PUBLIC_CLOUDINARY_FOLDER ?? "wedding";
 
 function SubmitButton({ disabled }: { disabled: boolean }) {
   const { pending } = useFormStatus();
@@ -26,100 +26,147 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
   );
 }
 
+/** A single image upload slot with native file picker */
+function ImageUploadSlot({
+  label,
+  fieldName,
+  value,
+  uploading,
+  onChange,
+  onClear,
+  previewClass = "h-32",
+}: {
+  label: string;
+  fieldName: string;
+  value: string;
+  uploading: boolean;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onClear: () => void;
+  previewClass?: string;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <div className="grid gap-1.5">
+      <span className="text-sm font-semibold text-slate-700">{label}</span>
+
+      {/* Hidden file input */}
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={onChange}
+      />
+
+      {value ? (
+        /* Preview with hover overlay */
+        <div className={`group relative overflow-hidden rounded-xl border border-[#DCE2ED] ${previewClass}`}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={value}
+            alt={`Aperçu ${label}`}
+            className="h-full w-full object-cover"
+          />
+          {/* Hover actions */}
+          <div className="absolute inset-0 flex items-end justify-between gap-2 p-2 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              disabled={uploading}
+              className="inline-flex items-center gap-1 rounded-md bg-white/90 px-2 py-1 text-[0.65rem] font-semibold text-slate-700 shadow hover:bg-white transition-colors cursor-pointer disabled:opacity-60"
+            >
+              <ImagePlus className="h-3 w-3" />
+              Changer
+            </button>
+            <button
+              type="button"
+              onClick={onClear}
+              className="flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white shadow hover:bg-red-600 transition-colors cursor-pointer"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* Upload zone */
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={uploading}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[#B7C4E0] bg-white py-7 text-slate-400 transition-all hover:border-[#534AB7] hover:text-[#534AB7] hover:bg-[#EEF3FF] cursor-pointer disabled:opacity-60"
+        >
+          {uploading ? (
+            <Loader2 className="h-5 w-5 animate-spin text-[#534AB7]" />
+          ) : (
+            <>
+              <ImagePlus className="h-5 w-5" />
+              <span className="text-xs font-semibold">Ajouter une image</span>
+            </>
+          )}
+        </button>
+      )}
+
+      {/* Passes the uploaded URL to the server action */}
+      <input type="hidden" name={fieldName} value={value} />
+    </div>
+  );
+}
+
 export function NewEventForm({ action }: NewEventFormProps) {
   const [profileImageUrl, setProfileImageUrl] = useState("");
   const [coverImageUrl, setCoverImageUrl] = useState("");
-  const [uploading, setUploading] = useState<UploadKind | null>(null);
+  const [uploadingField, setUploadingField] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
-  const imageKitReady = Boolean(imagekitPublicKey);
-
-  const uploadToImageKit = async (kind: UploadKind, file: File) => {
-    if (!imagekitPublicKey) {
-      setUploadError(
-        "Configuration ImageKit manquante. Ajoutez NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY.",
-      );
-      return;
-    }
-
+  const uploadFile = async (
+    file: File,
+    setter: (url: string) => void,
+    field: string
+  ) => {
     setUploadError(null);
-    setUploading(kind);
+    setUploadingField(field);
 
     try {
-      const authResponse = await fetch("/api/imagekit/auth", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          fileName: file.name,
-          folder: imagekitFolder,
-          useUniqueFileName: true,
-        }),
-      });
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", UPLOAD_PRESET);
+      formData.append("folder", FOLDER);
 
-      const authPayload = (await authResponse.json()) as {
-        token?: string;
-        error?: string;
-      };
-
-      if (!authResponse.ok || !authPayload.token) {
-        throw new Error(
-          authPayload.error ?? "Impossible de générer le token ImageKit.",
-        );
-      }
-
-      const uploadBody = new FormData();
-      uploadBody.append("file", file);
-      uploadBody.append("fileName", file.name);
-      uploadBody.append("folder", imagekitFolder);
-      uploadBody.append("useUniqueFileName", "true");
-      uploadBody.append("token", authPayload.token);
-
-      const response = await fetch(
-        "https://upload.imagekit.io/api/v2/files/upload",
-        {
-          method: "POST",
-          body: uploadBody,
-        },
+      const res = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
+        { method: "POST", body: formData }
       );
 
-      const payload = (await response.json()) as {
-        url?: string;
+      const data = (await res.json()) as {
+        secure_url?: string;
         error?: { message?: string };
       };
 
-      if (!response.ok || !payload.url) {
-        throw new Error(
-          payload.error?.message ?? "Upload ImageKit impossible.",
-        );
+      if (!res.ok || !data.secure_url) {
+        throw new Error(data.error?.message ?? "Échec de l'upload.");
       }
 
-      if (kind === "profileImageUrl") {
-        setProfileImageUrl(payload.url);
-      } else {
-        setCoverImageUrl(payload.url);
-      }
-    } catch (error) {
+      setter(data.secure_url);
+    } catch (err) {
       setUploadError(
-        error instanceof Error ? error.message : "Erreur lors de l'upload.",
+        err instanceof Error ? err.message : "Erreur lors de l'upload."
       );
     } finally {
-      setUploading(null);
+      setUploadingField(null);
     }
   };
 
-  const onPickFile = async (
-    kind: UploadKind,
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = event.target.files?.[0];
+  const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) void uploadFile(file, setProfileImageUrl, "profileImageUrl");
+    e.target.value = "";
+  };
 
-    if (!file) {
-      return;
-    }
-
-    await uploadToImageKit(kind, file);
+  const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) void uploadFile(file, setCoverImageUrl, "coverImageUrl");
+    e.target.value = "";
   };
 
   return (
@@ -140,10 +187,7 @@ export function NewEventForm({ action }: NewEventFormProps) {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="grid gap-1.5">
-          <label
-            htmlFor="eventDate"
-            className="text-sm font-semibold text-slate-700"
-          >
+          <label htmlFor="eventDate" className="text-sm font-semibold text-slate-700">
             Date
           </label>
           <input
@@ -155,10 +199,7 @@ export function NewEventForm({ action }: NewEventFormProps) {
         </div>
 
         <div className="grid gap-1.5">
-          <label
-            htmlFor="venue"
-            className="text-sm font-semibold text-slate-700"
-          >
+          <label htmlFor="venue" className="text-sm font-semibold text-slate-700">
             Lieu
           </label>
           <input
@@ -172,10 +213,7 @@ export function NewEventForm({ action }: NewEventFormProps) {
       </div>
 
       <div className="grid gap-1.5">
-        <label
-          htmlFor="description"
-          className="text-sm font-semibold text-slate-700"
-        >
+        <label htmlFor="description" className="text-sm font-semibold text-slate-700">
           Description
         </label>
         <textarea
@@ -188,69 +226,34 @@ export function NewEventForm({ action }: NewEventFormProps) {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="grid gap-1.5">
-          <label
-            htmlFor="profileImageFile"
-            className="text-sm font-semibold text-slate-700"
-          >
-            Photo profile
-          </label>
-          <input
-            id="profileImageFile"
-            name="profileImageFile"
-            type="file"
-            accept="image/*"
-            onChange={(event) => onPickFile("profileImageUrl", event)}
-            className="block w-full rounded-lg border border-[#DCE2ED] bg-white px-3 py-2 text-sm text-slate-600 file:mr-3 file:rounded-md file:border-0 file:bg-[#EEF3FF] file:px-2.5 file:py-1.5 file:text-xs file:font-semibold file:text-slate-700"
-          />
-          {uploading === "profileImageUrl" && (
-            <p className="text-xs text-slate-500">Upload en cours...</p>
-          )}
-          {profileImageUrl && (
-            <p className="text-xs text-slate-500">Image profile uploadée.</p>
-          )}
-          <input type="hidden" name="profileImageUrl" value={profileImageUrl} />
-        </div>
-
-        <div className="grid gap-1.5">
-          <label
-            htmlFor="coverImageFile"
-            className="text-sm font-semibold text-slate-700"
-          >
-            Photo de couverture
-          </label>
-          <input
-            id="coverImageFile"
-            name="coverImageFile"
-            type="file"
-            accept="image/*"
-            onChange={(event) => onPickFile("coverImageUrl", event)}
-            className="block w-full rounded-lg border border-[#DCE2ED] bg-white px-3 py-2 text-sm text-slate-600 file:mr-3 file:rounded-md file:border-0 file:bg-[#EEF3FF] file:px-2.5 file:py-1.5 file:text-xs file:font-semibold file:text-slate-700"
-          />
-          {uploading === "coverImageUrl" && (
-            <p className="text-xs text-slate-500">Upload en cours...</p>
-          )}
-          {coverImageUrl && (
-            <p className="text-xs text-slate-500">Image couverture uploadée.</p>
-          )}
-          <input type="hidden" name="coverImageUrl" value={coverImageUrl} />
-        </div>
+        <ImageUploadSlot
+          label="Photo profil"
+          fieldName="profileImageUrl"
+          value={profileImageUrl}
+          uploading={uploadingField === "profileImageUrl"}
+          onChange={handleProfileChange}
+          onClear={() => setProfileImageUrl("")}
+          previewClass="h-36"
+        />
+        <ImageUploadSlot
+          label="Photo de couverture"
+          fieldName="coverImageUrl"
+          value={coverImageUrl}
+          uploading={uploadingField === "coverImageUrl"}
+          onChange={handleCoverChange}
+          onClear={() => setCoverImageUrl("")}
+          previewClass="h-36"
+        />
       </div>
 
-      {!imageKitReady && (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
-          Configurez NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY pour activer l&apos;upload.
-        </p>
-      )}
-
       {uploadError && (
-        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
           {uploadError}
         </p>
       )}
 
       <div className="pt-2">
-        <SubmitButton disabled={Boolean(uploading)} />
+        <SubmitButton disabled={Boolean(uploadingField)} />
       </div>
     </form>
   );
