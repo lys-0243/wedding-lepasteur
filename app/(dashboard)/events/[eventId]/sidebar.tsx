@@ -36,14 +36,14 @@ function buildMenu(eventId: string): MenuItem[] {
       icon: LayoutDashboard,
     },
     {
-      label: "Invités",
-      href: `/events/${eventId}/guests`,
-      icon: Users,
-    },
-    {
       label: "Tables",
       href: `/events/${eventId}/tables`,
       icon: Armchair,
+    },
+    {
+      label: "Invités",
+      href: `/events/${eventId}/guests`,
+      icon: Users,
     },
     {
       label: "Boissons",
