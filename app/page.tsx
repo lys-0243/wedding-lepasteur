@@ -10,6 +10,8 @@ import { logoutAction } from "@/app/(auth)/actions";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 const eventIcons = [Sparkles, CalendarCheck2, Wrench];
 
 function formatEventDate(date: Date | null) {
