@@ -59,6 +59,34 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
 
   // Check capacity (couples count as 2 seats)
   const body = await req.json();
+
+  if (body.guestId) {
+    const guest = await prisma.guest.findFirst({
+      where: { id: body.guestId, eventId },
+    });
+    if (!guest) return NextResponse.json({ error: "Invité introuvable" }, { status: 404 });
+
+    const occupiedSeats = table.guests.reduce(
+      (sum, g) => sum + (g.invitationType === "COUPLE" ? 2 : 1),
+      0
+    );
+    const guestSeats = guest.invitationType === "COUPLE" ? 2 : 1;
+
+    if (occupiedSeats + guestSeats > table.capacity) {
+      return NextResponse.json(
+        { error: `Cette table n'a plus assez de places. Places libres : ${table.capacity - occupiedSeats}.` },
+        { status: 400 }
+      );
+    }
+
+    const updatedGuest = await prisma.guest.update({
+      where: { id: guest.id },
+      data: { tableId },
+    });
+
+    return NextResponse.json(updatedGuest);
+  }
+
   const parsed = createGuestSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });

@@ -17,11 +17,11 @@ const importGuestsSchema = z.object({
   ),
 });
 
-type RouteContext = { params: Promise<{ eventId: string; tableId: string }> };
+type RouteContext = { params: Promise<{ eventId: string }> };
 
 export async function POST(req: NextRequest, { params }: RouteContext) {
   const user = await requireUser();
-  const { eventId, tableId } = await params;
+  const { eventId } = await params;
 
   // Verify access
   const event = await prisma.event.findFirst({
@@ -29,13 +29,6 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
     select: { id: true },
   });
   if (!event) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-  // Verify table
-  const table = await prisma.table.findFirst({
-    where: { id: tableId, eventId },
-    include: { guests: { select: { invitationType: true } } },
-  });
-  if (!table) return NextResponse.json({ error: "Table introuvable" }, { status: 404 });
 
   const body = await req.json();
   const parsed = importGuestsSchema.safeParse(body);
@@ -45,33 +38,13 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
 
   const { guests } = parsed.data;
 
-  // Check capacity limit — couples count as 2 seats
-  const occupiedSeats = table.guests.reduce(
-    (sum, g) => sum + (g.invitationType === "COUPLE" ? 2 : 1),
-    0
-  );
-  const incomingSeats = guests.reduce(
-    (sum, g) => sum + (g.invitationType === "COUPLE" ? 2 : 1),
-    0
-  );
-  const availableSlots = table.capacity - occupiedSeats;
-
-  if (incomingSeats > availableSlots) {
-    return NextResponse.json(
-      {
-        error: `Impossible d'importer ces invités : ${incomingSeats} place(s) requises, seulement ${availableSlots} disponible(s).`,
-      },
-      { status: 400 }
-    );
-  }
-
-  // Import guests
+  // Import guests at the event level (tableId: null)
   const results = await Promise.allSettled(
     guests.map((g) =>
       prisma.guest.create({
         data: {
           eventId,
-          tableId,
+          tableId: null,
           firstName: g.firstName.trim(),
           lastName: g.lastName.trim(),
           email: g.email?.trim() || null,

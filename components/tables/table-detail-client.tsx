@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useRef, useTransition } from "react";
+import { useState, useRef, useTransition, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, Plus, Upload, Pencil, Trash2, Users, FileSpreadsheet, X, AlertTriangle, Link2Off, Download } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
+import { GuestName } from "@/components/guests/guest-name";
 import {
   Dialog,
   DialogContent,
@@ -47,6 +48,11 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
 
   // ── Create guest dialog ───────────────────────────────────────────────────
   const [createOpen, setCreateOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"existing" | "new">("existing");
+  const [unassignedGuests, setUnassignedGuests] = useState<GuestRow[]>([]);
+  const [loadingUnassigned, setLoadingUnassigned] = useState(false);
+  const [selectedGuestId, setSelectedGuestId] = useState("");
+
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -55,6 +61,30 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
   const [plusOneFirstName, setPlusOneFirstName] = useState("");
   const [plusOneLastName, setPlusOneLastName] = useState("");
   const [createLoading, setCreateLoading] = useState(false);
+
+  useEffect(() => {
+    if (createOpen) {
+      setLoadingUnassigned(true);
+      fetch(`/api/events/${eventId}/guests?unassigned=true`)
+        .then((res) => {
+          if (res.ok) return res.json();
+          throw new Error();
+        })
+        .then((data) => {
+          setUnassignedGuests(data);
+        })
+        .catch(() => {
+          toast.error("Impossible de charger la liste des invités existants.");
+        })
+        .finally(() => {
+          setLoadingUnassigned(false);
+        });
+    } else {
+      // Reset state when closing
+      setActiveTab("existing");
+      setSelectedGuestId("");
+    }
+  }, [createOpen, eventId]);
 
   // ── Edit guest dialog ─────────────────────────────────────────────────────
   const [editGuest, setEditGuest] = useState<GuestRow | null>(null);
@@ -168,6 +198,36 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
       setCreateOpen(false);
       resetCreateForm();
       toast.success(`${data.firstName} ${data.lastName} a été ajouté.`);
+    } finally {
+      setCreateLoading(false);
+    }
+  }
+
+  async function handleAssignExistingGuest(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selectedGuestId) {
+      toast.error("Veuillez sélectionner un invité.");
+      return;
+    }
+    setCreateLoading(true);
+    try {
+      const res = await fetch(`/api/events/${eventId}/tables/${table.id}/guests`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ guestId: selectedGuestId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error ?? "Erreur lors de l'assignation.");
+        return;
+      }
+      setTable((prev) => ({
+        ...prev,
+        guests: [...prev.guests, data].sort((a, b) => a.lastName.localeCompare(b.lastName)),
+      }));
+      setCreateOpen(false);
+      setSelectedGuestId("");
+      toast.success(`${data.firstName} ${data.lastName} a été ajouté à la table.`);
     } finally {
       setCreateLoading(false);
     }
@@ -589,11 +649,12 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
                   }`}
                 >
                   {/* Name */}
-                  <span className="text-sm font-semibold text-slate-800 truncate">
-                    {guest.invitationType === "COUPLE"
-                      ? `Couple ${guest.firstName} & ${guest.plusOneFirstName} ${guest.lastName || ""}`.trim()
-                      : `${guest.firstName} ${guest.lastName}`}
-                  </span>
+                  <GuestName
+                    firstName={guest.firstName}
+                    lastName={guest.lastName}
+                    invitationType={guest.invitationType}
+                    plusOneFirstName={guest.plusOneFirstName}
+                  />
 
                   {/* Contact */}
                   <div className="flex flex-col text-xs text-slate-500 min-w-0">
@@ -664,152 +725,249 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
       {/* ── Add Guest Dialog ────────────────────────────────────────────────── */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="max-w-md w-full rounded-[24px] bg-white p-6 shadow-2xl border-none gap-0 overflow-hidden outline-none">
-          <DialogHeader className="pb-4 border-b border-[#E8ECF4] mb-5">
+          <DialogHeader className="pb-4 border-b border-[#E8ECF4] mb-4">
             <DialogTitle className="text-[18px] font-bold text-slate-800">
               Ajouter un invité
             </DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleCreateGuest} className="space-y-4 pt-2">
-            <div className="grid grid-cols-2 gap-3">
+
+          {/* Tab Switcher */}
+          <div className="flex border-b border-slate-100 mb-4">
+            <button
+              type="button"
+              onClick={() => setActiveTab("existing")}
+              className={`flex-1 pb-2.5 text-sm font-semibold text-center transition-all border-b-2 cursor-pointer ${
+                activeTab === "existing"
+                  ? "border-[#1E5FF5] text-[#1E5FF5]"
+                  : "border-transparent text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              Invité existant
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("new")}
+              className={`flex-1 pb-2.5 text-sm font-semibold text-center transition-all border-b-2 cursor-pointer ${
+                activeTab === "new"
+                  ? "border-[#1E5FF5] text-[#1E5FF5]"
+                  : "border-transparent text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              Créer un invité
+            </button>
+          </div>
+
+          {activeTab === "existing" ? (
+            <form onSubmit={handleAssignExistingGuest} className="space-y-4 pt-2">
               <div className="space-y-1.5">
-                <Label htmlFor="create-firstname" className="text-[14px] font-medium text-slate-700 mb-1.5 block">
-                  Prénom <span className="text-red-500">*</span>
+                <Label htmlFor="existing-guest-select" className="text-[14px] font-medium text-slate-700 mb-1.5 block">
+                  Sélectionner un invité <span className="text-red-500">*</span>
                 </Label>
-                <Input
-                  id="create-firstname"
-                  placeholder="Ex : Jean"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  required
-                  autoFocus
-                  className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-[14px] outline-none transition-all focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 shadow-xs"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="create-lastname" className="text-[14px] font-medium text-slate-700 mb-1.5 block">
-                  Nom <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="create-lastname"
-                  placeholder="Ex : Dupont"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  required
-                  className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-[14px] outline-none transition-all focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 shadow-xs"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="create-email" className="text-[14px] font-medium text-slate-700 mb-1.5 block">
-                Adresse e-mail
-              </Label>
-              <Input
-                id="create-email"
-                type="email"
-                placeholder="Ex : jean.dupont@gmail.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-[14px] outline-none transition-all focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 shadow-xs"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="create-phone" className="text-[14px] font-medium text-slate-700 mb-1.5 block">
-                Téléphone
-              </Label>
-              <Input
-                id="create-phone"
-                placeholder="Ex : 0612345678"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-[14px] outline-none transition-all focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 shadow-xs"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="create-invitation-type" className="text-[14px] font-medium text-slate-700 mb-1.5 block">
-                Type d&apos;invitation <span className="text-red-500">*</span>
-              </Label>
-              <div className="relative">
-                <select
-                  id="create-invitation-type"
-                  value={invitationType}
-                  onChange={(e) => setInvitationType(e.target.value as "SINGLE" | "COUPLE")}
-                  className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-[14px] outline-none appearance-none focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 shadow-xs cursor-pointer"
-                >
-                  <option value="SINGLE">Seul</option>
-                  <option value="COUPLE">Couple</option>
-                </select>
-                <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-400">
-                  <Plus className="h-4 w-4 rotate-45" />
-                </div>
-              </div>
-            </div>
-
-            {invitationType === "COUPLE" && (
-              <div className="border-t border-slate-100 pt-4 mt-2 space-y-3">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  Accompagnateur / Conjoint
-                </p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="create-plusone-firstname" className="text-[14px] font-medium text-slate-700 mb-1.5 block">
-                      Prénom <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="create-plusone-firstname"
-                      placeholder="Prénom"
-                      value={plusOneFirstName}
-                      onChange={(e) => setPlusOneFirstName(e.target.value)}
-                      required
-                      className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-[14px] outline-none transition-all focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 shadow-xs"
-                    />
+                {loadingUnassigned ? (
+                  <div className="flex items-center gap-2 text-sm text-slate-500 h-11 px-4 border border-slate-200 rounded-xl bg-slate-50 animate-pulse">
+                    Chargement des invités…
                   </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="create-plusone-lastname" className="text-[14px] font-medium text-slate-700 mb-1.5 block">
-                      Nom <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="create-plusone-lastname"
-                      placeholder="Nom"
-                      value={plusOneLastName}
-                      onChange={(e) => setPlusOneLastName(e.target.value)}
-                      required
-                      className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-[14px] outline-none transition-all focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 shadow-xs"
-                    />
+                ) : unassignedGuests.length === 0 ? (
+                  <div className="text-sm text-slate-500 h-11 flex items-center px-4 border border-slate-200 rounded-xl bg-slate-50">
+                    Aucun invité non affecté disponible.
                   </div>
-                </div>
-              </div>
-            )}
-
-            <DialogFooter className="bg-[#F8FAFC] border-t border-[#E8ECF4] px-6 py-4 flex justify-end gap-3 rounded-b-[24px] -mx-6 -mb-6 mt-6">
-              <Button
-                type="button"
-                onClick={() => setCreateOpen(false)}
-                disabled={createLoading}
-                className="h-10 px-5 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
-              >
-                Annuler
-              </Button>
-              <Button
-                type="submit"
-                disabled={createLoading || !firstName.trim() || !lastName.trim()}
-                className="h-10 px-5 rounded-xl bg-[#1E5FF5] text-white text-sm font-medium hover:bg-[#154ED0] transition-colors shadow-xs cursor-pointer"
-              >
-                {createLoading ? (
-                  <span className="flex items-center gap-2">
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                    Création…
-                  </span>
                 ) : (
-                  "Créer"
+                  <div className="relative">
+                    <select
+                      id="existing-guest-select"
+                      value={selectedGuestId}
+                      onChange={(e) => setSelectedGuestId(e.target.value)}
+                      required
+                      className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-[14px] outline-none appearance-none focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 shadow-xs cursor-pointer"
+                    >
+                      <option value="">— Choisir un invité —</option>
+                      {unassignedGuests.map((g) => {
+                        const name = g.invitationType === "COUPLE"
+                          ? `Couple ${g.firstName} & ${g.plusOneFirstName ?? ""} ${g.lastName || ""}`.trim()
+                          : `${g.firstName} ${g.lastName}`;
+                        return (
+                          <option key={g.id} value={g.id}>
+                            {name}
+                          </option>
+                        );
+                      })}
+                    </select>
+                    <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-400">
+                      <Plus className="h-4 w-4 rotate-45" />
+                    </div>
+                  </div>
                 )}
-              </Button>
-            </DialogFooter>
-          </form>
+              </div>
+
+              <DialogFooter className="bg-[#F8FAFC] border-t border-[#E8ECF4] px-6 py-4 flex justify-end gap-3 rounded-b-[24px] -mx-6 -mb-6 mt-6">
+                <Button
+                  type="button"
+                  onClick={() => setCreateOpen(false)}
+                  disabled={createLoading}
+                  className="h-10 px-5 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
+                >
+                  Annuler
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={createLoading || !selectedGuestId || loadingUnassigned || unassignedGuests.length === 0}
+                  className="h-10 px-5 rounded-xl bg-[#1E5FF5] text-white text-sm font-medium hover:bg-[#154ED0] transition-colors shadow-xs cursor-pointer"
+                >
+                  {createLoading ? (
+                    <span className="flex items-center gap-2">
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                      Ajout…
+                    </span>
+                  ) : (
+                    "Ajouter à la table"
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
+          ) : (
+            <form onSubmit={handleCreateGuest} className="space-y-4 pt-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="create-firstname" className="text-[14px] font-medium text-slate-700 mb-1.5 block">
+                    Prénom <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="create-firstname"
+                    placeholder="Ex : Jean"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    required
+                    autoFocus
+                    className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-[14px] outline-none transition-all focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 shadow-xs"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="create-lastname" className="text-[14px] font-medium text-slate-700 mb-1.5 block">
+                    Nom <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="create-lastname"
+                    placeholder="Ex : Dupont"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    required
+                    className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-[14px] outline-none transition-all focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 shadow-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="create-email" className="text-[14px] font-medium text-slate-700 mb-1.5 block">
+                  Adresse e-mail
+                </Label>
+                <Input
+                  id="create-email"
+                  type="email"
+                  placeholder="Ex : jean.dupont@gmail.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-[14px] outline-none transition-all focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 shadow-xs"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="create-phone" className="text-[14px] font-medium text-slate-700 mb-1.5 block">
+                  Téléphone
+                </Label>
+                <Input
+                  id="create-phone"
+                  placeholder="Ex : 0612345678"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-[14px] outline-none transition-all focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 shadow-xs"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="create-invitation-type" className="text-[14px] font-medium text-slate-700 mb-1.5 block">
+                  Type d&apos;invitation <span className="text-red-500">*</span>
+                </Label>
+                <div className="relative">
+                  <select
+                    id="create-invitation-type"
+                    value={invitationType}
+                    onChange={(e) => setInvitationType(e.target.value as "SINGLE" | "COUPLE")}
+                    className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-[14px] outline-none appearance-none focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 shadow-xs cursor-pointer"
+                  >
+                    <option value="SINGLE">Seul</option>
+                    <option value="COUPLE">Couple</option>
+                  </select>
+                  <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-400">
+                    <Plus className="h-4 w-4 rotate-45" />
+                  </div>
+                </div>
+              </div>
+
+              {invitationType === "COUPLE" && (
+                <div className="border-t border-slate-100 pt-4 mt-2 space-y-3">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    Accompagnateur / Conjoint
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="create-plusone-firstname" className="text-[14px] font-medium text-slate-700 mb-1.5 block">
+                        Prénom <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id="create-plusone-firstname"
+                        placeholder="Prénom"
+                        value={plusOneFirstName}
+                        onChange={(e) => setPlusOneFirstName(e.target.value)}
+                        required
+                        className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-[14px] outline-none transition-all focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 shadow-xs"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="create-plusone-lastname" className="text-[14px] font-medium text-slate-700 mb-1.5 block">
+                        Nom <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id="create-plusone-lastname"
+                        placeholder="Nom"
+                        value={plusOneLastName}
+                        onChange={(e) => setPlusOneLastName(e.target.value)}
+                        required
+                        className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-[14px] outline-none transition-all focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 shadow-xs"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <DialogFooter className="bg-[#F8FAFC] border-t border-[#E8ECF4] px-6 py-4 flex justify-end gap-3 rounded-b-[24px] -mx-6 -mb-6 mt-6">
+                <Button
+                  type="button"
+                  onClick={() => setCreateOpen(false)}
+                  disabled={createLoading}
+                  className="h-10 px-5 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
+                >
+                  Annuler
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={createLoading || !firstName.trim() || !lastName.trim()}
+                  className="h-10 px-5 rounded-xl bg-[#1E5FF5] text-white text-sm font-medium hover:bg-[#154ED0] transition-colors shadow-xs cursor-pointer"
+                >
+                  {createLoading ? (
+                    <span className="flex items-center gap-2">
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                      Création…
+                    </span>
+                  ) : (
+                    "Créer"
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
+
 
       {/* ── Edit Guest Dialog ────────────────────────────────────────────────── */}
       <Dialog open={!!editGuest} onOpenChange={(o) => !o && setEditGuest(null)}>
