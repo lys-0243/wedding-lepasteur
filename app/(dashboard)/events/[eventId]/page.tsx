@@ -73,7 +73,7 @@ export default async function EventDashboardPage({ params }: EventPageProps) {
   return (
     <div className="min-h-full bg-[#F4F6FB]">
       {/* ── Cover photo ─────────────────────────────────────────────── */}
-      <div className="relative h-52 w-full overflow-hidden bg-gradient-to-br from-[#C4B9F5] via-[#A8D8EA] to-[#DDF4F2] lg:h-64">
+      <div className="relative h-60 w-full overflow-hidden bg-linear-to-br  from-[#C4B9F5] via-[#A8D8EA] to-[#DDF4F2] lg:h-64">
         {event.coverImageUrl && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -130,7 +130,6 @@ export default async function EventDashboardPage({ params }: EventPageProps) {
 
       {/* ── Page body ───────────────────────────────────────────────── */}
       <div className="p-6 lg:p-8">
-
         {/* Stats */}
         <div className="mb-6 grid gap-3 sm:grid-cols-3">
           {stats.map(({ label, value, icon: Icon, color, bg }) => (
