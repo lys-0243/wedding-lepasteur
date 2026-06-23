@@ -35,7 +35,9 @@ export default async function EventLayout({ children, params }: LayoutProps) {
 
       {/* ── Main content ── */}
       <main className="flex-1 overflow-y-auto">
-        {children}
+        <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8">
+          {children}
+        </div>
       </main>
     </div>
   );

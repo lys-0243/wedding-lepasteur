@@ -73,7 +73,7 @@ export default async function EventDashboardPage({ params }: EventPageProps) {
   return (
     <div className="min-h-full bg-[#F4F6FB]">
       {/* ── Cover photo ─────────────────────────────────────────────── */}
-      <div className="relative h-52 w-full overflow-hidden bg-gradient-to-br from-[#C4B9F5] via-[#A8D8EA] to-[#DDF4F2] lg:h-64">
+      <div className="relative h-60 w-full overflow-hidden bg-linear-to-br  from-[#C4B9F5] via-[#A8D8EA] to-[#DDF4F2] lg:h-64">
         {event.coverImageUrl && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -83,7 +83,7 @@ export default async function EventDashboardPage({ params }: EventPageProps) {
           />
         )}
         {/* Subtle gradient overlay at the bottom for readability */}
-        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/30 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-24 bg-linear-to-t from-black/30 to-transparent" />
       </div>
 
       {/* ── Profile strip (avatar + title) ──────────────────────────── */}
@@ -98,7 +98,7 @@ export default async function EventDashboardPage({ params }: EventPageProps) {
               className="h-24 w-24 rounded-full object-cover ring-4 ring-white shadow-lg lg:h-38 lg:w-38"
             />
           ) : (
-            <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-[#534AB7] to-[#AF8BFF] ring-4 ring-white shadow-lg lg:h-28 lg:w-28">
+            <div className="flex h-24 w-24 items-center justify-center rounded-full bg-linear-to-br from-[#534AB7] to-[#AF8BFF] ring-4 ring-white shadow-lg lg:h-28 lg:w-28">
               <span className="text-2xl font-bold text-white lg:text-3xl">
                 {event.title.slice(0, 2).toUpperCase()}
               </span>
@@ -130,7 +130,6 @@ export default async function EventDashboardPage({ params }: EventPageProps) {
 
       {/* ── Page body ───────────────────────────────────────────────── */}
       <div className="p-6 lg:p-8">
-
         {/* Stats */}
         <div className="mb-6 grid gap-3 sm:grid-cols-3">
           {stats.map(({ label, value, icon: Icon, color, bg }) => (
