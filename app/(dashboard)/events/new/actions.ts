@@ -58,6 +58,26 @@ export async function createEventAction(formData: FormData) {
 
   const slug = await createUniqueSlug(title);
 
+  const rawSelectedDrinkIds = formData.get("selectedDrinkIds");
+  let selectedDrinkIds: string[] = [];
+  if (typeof rawSelectedDrinkIds === "string" && rawSelectedDrinkIds.trim()) {
+    try {
+      const parsed = JSON.parse(rawSelectedDrinkIds) as unknown;
+      if (Array.isArray(parsed)) {
+        selectedDrinkIds = parsed
+          .filter(
+            (id): id is string =>
+              typeof id === "string" && id.trim().length > 0,
+          )
+          .map((id) => id.trim());
+      }
+    } catch {
+      selectedDrinkIds = [];
+    }
+  }
+
+  const distinctSelectedDrinkIds = [...new Set(selectedDrinkIds)];
+
   const event = await prisma.event.create({
     data: {
       userId: user.id,
@@ -68,6 +88,15 @@ export async function createEventAction(formData: FormData) {
       description: asOptionalText(formData.get("description")),
       profileImageUrl: asOptionalText(formData.get("profileImageUrl")),
       coverImageUrl: asOptionalText(formData.get("coverImageUrl")),
+      eventDrinks:
+        distinctSelectedDrinkIds.length > 0
+          ? {
+              createMany: {
+                data: distinctSelectedDrinkIds.map((drinkId) => ({ drinkId })),
+                skipDuplicates: true,
+              },
+            }
+          : undefined,
     },
     select: {
       id: true,

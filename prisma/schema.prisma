@@ -19,20 +19,20 @@ model User {
 }
 
 model Event {
-  id              String      @id @default(cuid())
+  id              String       @id @default(cuid())
   userId          String
   title           String
-  slug            String      @unique
+  slug            String       @unique
   eventDate       DateTime?
   venue           String?
   description     String?
   profileImageUrl String?
   coverImageUrl   String?
-  status          EventStatus @default(DRAFT)
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  drinks          Drink[]
-  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status          EventStatus  @default(DRAFT)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  eventDrinks     EventDrink[]
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   guests          Guest[]
   tables          Table[]
 }
@@ -87,16 +87,29 @@ model GuestDrink {
   @@unique([guestId, drinkId, assignedTo])
 }
 
+model EventDrink {
+  id        String   @id @default(cuid())
+  eventId   String
+  drinkId   String
+  createdAt DateTime @default(now())
+  drink     Drink    @relation(fields: [drinkId], references: [id], onDelete: Cascade)
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, drinkId])
+  @@index([eventId])
+  @@index([drinkId])
+}
+
 model Drink {
   id          String       @id @default(cuid())
-  eventId     String
   name        String
   category    String?
   isAlcoholic Boolean      @default(true)
-  event       Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  imageUrl    String?
   guestDrinks GuestDrink[]
+  eventDrinks EventDrink[]
 
-  @@unique([eventId, name])
+  @@unique([name, isAlcoholic])
 }
 
 enum EventStatus {

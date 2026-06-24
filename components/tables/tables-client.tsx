@@ -672,7 +672,7 @@ export function TablesClient({ eventId, initialTables }: Props) {
 
       {/* ── Import dialog ───────────────────────────────────────────────────── */}
       <Dialog open={importOpen} onOpenChange={(o) => { if (!o) { setImportOpen(false); clearUploadedFile(); } }}>
-        <DialogContent className="max-w-lg w-full rounded-[24px] bg-white p-6 shadow-2xl border-none gap-0 overflow-hidden outline-none">
+        <DialogContent className="w-[70vw] max-w-none rounded-[24px] bg-white p-6 shadow-2xl border-none gap-0 overflow-hidden outline-none">
           <DialogHeader className="pb-4 border-b border-[#E8ECF4] mb-4">
             <DialogTitle className="text-[18px] font-bold text-slate-800">
               Importer des tables
