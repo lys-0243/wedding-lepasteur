@@ -2,7 +2,7 @@
 
 import { useState, useRef, useTransition } from "react";
 import Link from "next/link";
-import { Plus, Upload, Pencil, Trash2, Users, FileSpreadsheet, X, AlertTriangle, Download } from "lucide-react";
+import { Plus, Upload, Pencil, Trash2, Users, FileSpreadsheet, X, AlertTriangle, Download, Eye } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
@@ -379,7 +379,7 @@ export function TablesClient({ eventId, initialTables }: Props) {
       {/* ── Table list ────────────────────────────────────────────────────── */}
       <div className="mt-4 overflow-hidden rounded-2xl border border-[#E8ECF4] bg-white shadow-sm">
         {/* Table head */}
-        <div className="grid grid-cols-[auto_1fr_120px_100px_80px] items-center border-b border-[#E8ECF4] bg-slate-50/60 px-5 py-3 text-[0.7rem] font-bold uppercase tracking-widest text-slate-400">
+        <div className="grid grid-cols-[auto_1fr_120px_100px_120px] items-center border-b border-[#E8ECF4] bg-slate-50/60 px-5 py-3 text-[0.7rem] font-bold uppercase tracking-widest text-slate-400">
           <span className="w-8" />
           <span>Nom</span>
           <span className="text-center">Capacité</span>
@@ -419,7 +419,7 @@ export function TablesClient({ eventId, initialTables }: Props) {
               return (
                 <li
                   key={table.id}
-                  className={`grid grid-cols-[auto_1fr_120px_100px_80px] items-center gap-2 px-5 py-3.5 transition-colors hover:bg-slate-50/60 ${
+                  className={`grid grid-cols-[auto_1fr_120px_100px_120px] items-center gap-2 px-5 py-3.5 transition-colors hover:bg-slate-50/60 ${
                     i !== filtered.length - 1 ? "border-b border-[#E8ECF4]" : ""
                   }`}
                 >
@@ -457,6 +457,13 @@ export function TablesClient({ eventId, initialTables }: Props) {
 
                   {/* Actions */}
                   <div className="flex items-center justify-center gap-1">
+                    <Link
+                      href={`/events/${eventId}/tables/${table.id}`}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-[#EEF0FF] hover:text-[#1E5FF5]"
+                      title="Voir la table"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                    </Link>
                     <button
                       onClick={() => {
                         setEditTable(table);
