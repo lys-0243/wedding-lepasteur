@@ -22,6 +22,9 @@ import {
   Download,
   Plus,
   FileSpreadsheet,
+  Share2,
+  Copy,
+  CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
@@ -41,6 +44,7 @@ type GuestTable = { id: string; name: string } | null;
 
 type Guest = {
   id: string;
+  token: string;
   firstName: string;
   lastName: string;
   email: string | null;
@@ -58,6 +62,7 @@ type Guest = {
 type Props = {
   eventId: string;
   initialGuests: Guest[];
+  event?: { title: string; eventDate: string | null };
 };
 
 const RSVP_LABELS: Record<string, string> = {
@@ -86,11 +91,12 @@ function formatDate(iso: string) {
   }).format(new Date(iso));
 }
 
-export function GuestsClient({ eventId, initialGuests }: Props) {
+export function GuestsClient({ eventId, initialGuests, event }: Props) {
   const [guests, setGuests] = useState<Guest[]>(initialGuests);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [, startTransition] = useTransition();
+  const [copiedTokens, setCopiedTokens] = useState<Set<string>>(new Set());
 
   // ── View dialog ────────────────────────────────────────────────────────────
   const [viewGuest, setViewGuest] = useState<Guest | null>(null);
@@ -144,6 +150,69 @@ export function GuestsClient({ eventId, initialGuests }: Props) {
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function getInviteLink(token: string) {
+    if (typeof window === "undefined") return `/invite/${token}/confirmation`;
+    return `${window.location.origin}/invite/${token}/confirmation`;
+  }
+
+  async function handleShareInvite(guest: Guest) {
+    if (!guest.table) {
+      toast.error(
+        "Assignez d'abord cet invité à une table pour partager son invitation.",
+      );
+      return;
+    }
+
+    const inviteUrl = getInviteLink(guest.token);
+
+    // Format event date in French
+    const eventDateStr = event?.eventDate
+      ? new Intl.DateTimeFormat("fr-FR", {
+          day: "2-digit",
+          month: "long",
+          year: "numeric",
+        }).format(new Date(event.eventDate))
+      : "";
+
+    const eventTitle = event?.title || "l'événement";
+
+    // Build richer WhatsApp message with event context
+    const text = eventDateStr
+      ? `Bonjour ${guest.firstName}, tu es invité à ${eventTitle} (${eventDateStr}). Clique ici pour confirmer ta présence: ${inviteUrl}`
+      : `Bonjour ${guest.firstName}, tu es invité à ${eventTitle}. Clique ici pour confirmer ta présence: ${inviteUrl}`;
+
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
+
+    if (typeof window !== "undefined") {
+      window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+    }
+
+    toast.info("Partagez le lien avec le contact de votre choix sur WhatsApp.");
+  }
+
+  async function handleCopyLink(guest: Guest) {
+    if (!guest.table) {
+      toast.error("Assignez d'abord cet invité à une table.");
+      return;
+    }
+
+    const inviteUrl = getInviteLink(guest.token);
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      setCopiedTokens((prev) => new Set(prev).add(guest.id));
+      setTimeout(() => {
+        setCopiedTokens((prev) => {
+          const next = new Set(prev);
+          next.delete(guest.id);
+          return next;
+        });
+      }, 2000);
+      toast.success("Lien copié dans le presse-papiers.");
+    } catch {
+      toast.error("Impossible de copier le lien.");
+    }
+  }
 
   // ── Counts ─────────────────────────────────────────────────────────────────
   const confirmed = guests.filter((g) => g.rsvpStatus === "CONFIRMED").length;
@@ -790,6 +859,35 @@ export function GuestsClient({ eventId, initialGuests }: Props) {
 
                 {/* Actions */}
                 <div className="flex items-center justify-center gap-1">
+                  {guest.table ? (
+                    <>
+                      <button
+                        onClick={() => void handleCopyLink(guest)}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-blue-50 hover:text-blue-600"
+                        title="Copier le lien"
+                      >
+                        {copiedTokens.has(guest.id) ? (
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => void handleShareInvite(guest)}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-emerald-50 hover:text-emerald-600"
+                        title="Partager sur WhatsApp"
+                      >
+                        <Share2 className="h-3.5 w-3.5" />
+                      </button>
+                    </>
+                  ) : (
+                    <div
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-300 cursor-not-allowed"
+                      title="Assignez à une table pour partager"
+                    >
+                      <Share2 className="h-3.5 w-3.5" />
+                    </div>
+                  )}
                   <button
                     onClick={() => setViewGuest(guest)}
                     className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-[#EEF0FF] hover:text-[#1E5FF5]"
