@@ -15,7 +15,7 @@ export default async function GuestsPage({ params }: GuestsPageProps) {
 
   const event = await prisma.event.findFirst({
     where: { id: eventId, userId: user.id },
-    select: { id: true },
+    select: { id: true, title: true, eventDate: true },
   });
   if (!event) notFound();
 
@@ -24,6 +24,7 @@ export default async function GuestsPage({ params }: GuestsPageProps) {
     orderBy: { createdAt: "asc" },
     select: {
       id: true,
+      token: true,
       firstName: true,
       lastName: true,
       email: true,
@@ -48,7 +49,14 @@ export default async function GuestsPage({ params }: GuestsPageProps) {
 
   return (
     <div className="py-6 lg:py-8">
-      <GuestsClient eventId={eventId} initialGuests={serialized} />
+      <GuestsClient
+        eventId={eventId}
+        initialGuests={serialized}
+        event={{
+          title: event.title,
+          eventDate: event.eventDate?.toISOString() ?? null,
+        }}
+      />
     </div>
   );
 }
