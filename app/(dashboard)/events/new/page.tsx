@@ -3,8 +3,14 @@ import { createEventAction } from "./actions";
 import { NewEventForm } from "./new-event-form";
 import { LogOut } from "lucide-react";
 import { logoutAction } from "@/app/(auth)/actions";
+import { prisma } from "@/lib/prisma";
 
-export default function NewEventPage() {
+export default async function NewEventPage() {
+  const catalogDrinks = await prisma.drink.findMany({
+    orderBy: [{ isAlcoholic: "desc" }, { name: "asc" }],
+    select: { id: true, name: true, isAlcoholic: true },
+  });
+
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-linear-to-b from-[#DDF4F2] via-[#EAEFF9] to-[#DCCBF4] px-4 py-8 sm:px-6">
       <div
@@ -31,7 +37,10 @@ export default function NewEventPage() {
             </Link>
           </div>
 
-          <NewEventForm action={createEventAction} />
+          <NewEventForm
+            action={createEventAction}
+            catalogDrinks={catalogDrinks}
+          />
         </div>
       </section>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useRef, useTransition } from "react";
 import {
   Users,
   Search,
@@ -18,8 +18,13 @@ import {
   Phone,
   Mail,
   AlertTriangle,
+  Upload,
+  Download,
+  Plus,
+  FileSpreadsheet,
 } from "lucide-react";
 import { toast } from "sonner";
+import * as XLSX from "xlsx";
 import { Input } from "@/components/ui/input";
 import { GuestName } from "@/components/guests/guest-name";
 import { Button } from "@/components/ui/button";
@@ -96,7 +101,9 @@ export function GuestsClient({ eventId, initialGuests }: Props) {
   const [editLastName, setEditLastName] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editPhone, setEditPhone] = useState("");
-  const [editInvitationType, setEditInvitationType] = useState<"SINGLE" | "COUPLE">("SINGLE");
+  const [editInvitationType, setEditInvitationType] = useState<
+    "SINGLE" | "COUPLE"
+  >("SINGLE");
   const [editPlusOneFirstName, setEditPlusOneFirstName] = useState("");
   const [editPlusOneLastName, setEditPlusOneLastName] = useState("");
   const [editLoading, setEditLoading] = useState(false);
@@ -105,6 +112,39 @@ export function GuestsClient({ eventId, initialGuests }: Props) {
   const [deleteGuest, setDeleteGuest] = useState<Guest | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  // ── Create dialog ──────────────────────────────────────────────────────────
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createFirstName, setCreateFirstName] = useState("");
+  const [createLastName, setCreateLastName] = useState("");
+  const [createEmail, setCreateEmail] = useState("");
+  const [createPhone, setCreatePhone] = useState("");
+  const [createInvitationType, setCreateInvitationType] = useState<
+    "SINGLE" | "COUPLE"
+  >("SINGLE");
+  const [createPlusOneFirstName, setCreatePlusOneFirstName] = useState("");
+  const [createPlusOneLastName, setCreatePlusOneLastName] = useState("");
+  const [createLoading, setCreateLoading] = useState(false);
+
+  // ── Import dialog ──────────────────────────────────────────────────────────
+  const [importOpen, setImportOpen] = useState(false);
+  const [importLoading, setImportLoading] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [fileHeaders, setFileHeaders] = useState<string[]>([]);
+  const [rawData, setRawData] = useState<Record<string, any>[]>([]);
+  const [mappedColumns, setMappedColumns] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    invitationType: "",
+    plusOneFirstName: "",
+    plusOneLastName: "",
+    table: "",
+  });
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // ── Counts ─────────────────────────────────────────────────────────────────
   const confirmed = guests.filter((g) => g.rsvpStatus === "CONFIRMED").length;
   const declined = guests.filter((g) => g.rsvpStatus === "DECLINED").length;
@@ -112,7 +152,7 @@ export function GuestsClient({ eventId, initialGuests }: Props) {
 
   const totalAttendees = guests.reduce(
     (sum, g) => sum + (g.invitationType === "COUPLE" ? 2 : 1),
-    0
+    0,
   );
 
   // ── Filters ────────────────────────────────────────────────────────────────
@@ -127,17 +167,36 @@ export function GuestsClient({ eventId, initialGuests }: Props) {
       (g.plusOneLastName ?? "").toLowerCase().includes(q) ||
       (g.table?.name ?? "").toLowerCase().includes(q);
 
-    const matchStatus =
-      statusFilter === "ALL" || g.rsvpStatus === statusFilter;
+    const matchStatus = statusFilter === "ALL" || g.rsvpStatus === statusFilter;
 
     return matchSearch && matchStatus;
   });
 
   const statChips = [
-    { key: "ALL", label: "Tous", count: guests.length, color: "text-slate-700" },
-    { key: "CONFIRMED", label: "Confirmés", count: confirmed, color: "text-emerald-600" },
-    { key: "PENDING", label: "En attente", count: pending, color: "text-amber-600" },
-    { key: "DECLINED", label: "Déclinés", count: declined, color: "text-red-600" },
+    {
+      key: "ALL",
+      label: "Tous",
+      count: guests.length,
+      color: "text-slate-700",
+    },
+    {
+      key: "CONFIRMED",
+      label: "Confirmés",
+      count: confirmed,
+      color: "text-emerald-600",
+    },
+    {
+      key: "PENDING",
+      label: "En attente",
+      count: pending,
+      color: "text-amber-600",
+    },
+    {
+      key: "DECLINED",
+      label: "Déclinés",
+      count: declined,
+      color: "text-red-600",
+    },
   ];
 
   // ── Handlers ───────────────────────────────────────────────────────────────
@@ -166,8 +225,10 @@ export function GuestsClient({ eventId, initialGuests }: Props) {
           email: editEmail,
           phone: editPhone,
           invitationType: editInvitationType,
-          plusOneFirstName: editInvitationType === "COUPLE" ? editPlusOneFirstName : "",
-          plusOneLastName: editInvitationType === "COUPLE" ? editPlusOneLastName : "",
+          plusOneFirstName:
+            editInvitationType === "COUPLE" ? editPlusOneFirstName : "",
+          plusOneLastName:
+            editInvitationType === "COUPLE" ? editPlusOneLastName : "",
         }),
       });
       const data = await res.json();
@@ -178,7 +239,7 @@ export function GuestsClient({ eventId, initialGuests }: Props) {
       setGuests((prev) =>
         prev
           .map((g) => (g.id === data.id ? data : g))
-          .sort((a, b) => a.lastName.localeCompare(b.lastName))
+          .sort((a, b) => a.lastName.localeCompare(b.lastName)),
       );
       setEditGuest(null);
       toast.success("Invité mis à jour.");
@@ -191,20 +252,354 @@ export function GuestsClient({ eventId, initialGuests }: Props) {
     if (!deleteGuest) return;
     setDeleteLoading(true);
     try {
-      const res = await fetch(`/api/events/${eventId}/guests/${deleteGuest.id}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(
+        `/api/events/${eventId}/guests/${deleteGuest.id}`,
+        {
+          method: "DELETE",
+        },
+      );
       if (!res.ok) {
         toast.error("Erreur lors de la suppression.");
         return;
       }
       setGuests((prev) => prev.filter((g) => g.id !== deleteGuest.id));
-      toast.success(`${deleteGuest.firstName} ${deleteGuest.lastName} a été supprimé.`);
+      toast.success(
+        `${deleteGuest.firstName} ${deleteGuest.lastName} a été supprimé.`,
+      );
       setDeleteGuest(null);
     } finally {
       setDeleteLoading(false);
     }
   }
+
+  async function handleCreateSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setCreateLoading(true);
+    try {
+      const res = await fetch(`/api/events/${eventId}/guests`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: createFirstName,
+          lastName: createLastName,
+          email: createEmail,
+          phone: createPhone,
+          invitationType: createInvitationType,
+          plusOneFirstName:
+            createInvitationType === "COUPLE" ? createPlusOneFirstName : "",
+          plusOneLastName:
+            createInvitationType === "COUPLE" ? createPlusOneLastName : "",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error ?? "Erreur lors de la création.");
+        return;
+      }
+      setGuests((prev) =>
+        [...prev, { ...data, table: null }].sort((a, b) =>
+          a.lastName.localeCompare(b.lastName),
+        ),
+      );
+      setCreateOpen(false);
+      resetCreateForm();
+      toast.success(`${data.firstName} ${data.lastName} a été ajouté.`);
+    } finally {
+      setCreateLoading(false);
+    }
+  }
+
+  function resetCreateForm() {
+    setCreateFirstName("");
+    setCreateLastName("");
+    setCreateEmail("");
+    setCreatePhone("");
+    setCreateInvitationType("SINGLE");
+    setCreatePlusOneFirstName("");
+    setCreatePlusOneLastName("");
+  }
+
+  function handleExportExcel() {
+    try {
+      const exportData = guests.map((g) => {
+        let rsvpLabel = "En attente";
+        if (g.rsvpStatus === "CONFIRMED") rsvpLabel = "Confirmé";
+        if (g.rsvpStatus === "DECLINED") rsvpLabel = "Décliné";
+
+        return {
+          Prénom: g.firstName,
+          Nom: g.lastName,
+          Email: g.email || "",
+          Téléphone: g.phone || "",
+          "Type d'invitation":
+            g.invitationType === "COUPLE" ? "Couple" : "Seul",
+          "Accompagnateur Prénom": g.plusOneFirstName || "",
+          "Accompagnateur Nom": g.plusOneLastName || "",
+          "Statut RSVP": rsvpLabel,
+          Table: g.table?.name || "Non assigné",
+        };
+      });
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Invités");
+      XLSX.writeFile(workbook, `invites-evenement-${eventId}.xlsx`);
+      toast.success("La liste des invités a été exportée.");
+    } catch (err) {
+      console.error(err);
+      toast.error("Impossible d'exporter la liste des invités.");
+    }
+  }
+
+  async function refreshGuests() {
+    const res = await fetch(`/api/events/${eventId}/guests`);
+    if (res.ok) {
+      const data = await res.json();
+      startTransition(() => setGuests(data));
+    }
+  }
+
+  function getSheetHeaders(sheet: XLSX.WorkSheet): string[] {
+    const headers: string[] = [];
+    const range = XLSX.utils.decode_range(sheet["!ref"] || "");
+    const R = range.s.r;
+    for (let C = range.s.c; C <= range.e.c; ++C) {
+      const cell_address = { c: C, r: R };
+      const cell_ref = XLSX.utils.encode_cell(cell_address);
+      const cell = sheet[cell_ref];
+      if (cell && cell.t) {
+        headers.push(String(cell.v).trim());
+      } else {
+        headers.push(`Colonne ${C + 1}`);
+      }
+    }
+    return headers;
+  }
+
+  function processFile(file: File) {
+    if (!file) return;
+    setImportLoading(true);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = e.target?.result;
+        if (!data) return;
+        const workbook = XLSX.read(data, { type: "array" });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+
+        const rawRows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, {
+          defval: "",
+        });
+        if (rawRows.length === 0) {
+          toast.error("Le fichier Excel est vide.");
+          return;
+        }
+
+        const headers = getSheetHeaders(sheet);
+        setFileHeaders(headers);
+        setRawData(rawRows);
+        setUploadedFileName(file.name);
+
+        // Auto mapping
+        const fnCol =
+          headers.find((h) => /prenom|prénom|first/i.test(h)) ||
+          headers[0] ||
+          "";
+        const lnCol =
+          headers.find((h) => /nom|last/i.test(h)) || headers[1] || "";
+        const emCol = headers.find((h) => /mail/i.test(h)) || "";
+        const phCol = headers.find((h) => /tel|tél|phone/i.test(h)) || "";
+        const typeCol = headers.find((h) => /type|invit/i.test(h)) || "";
+        const p1FnCol =
+          headers.find((h) =>
+            /(conjoint|accomp|plus).*prenom|prenom.*(conjoint|accomp|plus)|plus.*first/i.test(
+              h,
+            ),
+          ) || "";
+        const p1LnCol =
+          headers.find((h) =>
+            /(conjoint|accomp|plus).*nom|nom.*(conjoint|accomp|plus)|plus.*last/i.test(
+              h,
+            ),
+          ) || "";
+        const tableCol = headers.find((h) => /table|placement/i.test(h)) || "";
+
+        setMappedColumns({
+          firstName: fnCol,
+          lastName: lnCol,
+          email: emCol,
+          phone: phCol,
+          invitationType: typeCol,
+          plusOneFirstName: p1FnCol,
+          plusOneLastName: p1LnCol,
+          table: tableCol,
+        });
+      } catch (err) {
+        console.error(err);
+        toast.error("Impossible de lire le fichier Excel.");
+      } finally {
+        setImportLoading(false);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) processFile(file);
+  }
+
+  function handleDrag(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      processFile(e.dataTransfer.files[0]);
+    }
+  }
+
+  function clearUploadedFile() {
+    setUploadedFileName(null);
+    setFileHeaders([]);
+    setRawData([]);
+    setMappedColumns({
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      invitationType: "",
+      plusOneFirstName: "",
+      plusOneLastName: "",
+      table: "",
+    });
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  async function handleImportSubmit() {
+    if (!mappedColumns.firstName || !mappedColumns.lastName) {
+      toast.error("Veuillez associer au moins les champs Prénom et Nom.");
+      return;
+    }
+
+    setImportLoading(true);
+    try {
+      const guestsToImport = rawData
+        .map((row) => {
+          const fName = String(row[mappedColumns.firstName] || "").trim();
+          const lName = String(row[mappedColumns.lastName] || "").trim();
+          const emailVal = mappedColumns.email
+            ? String(row[mappedColumns.email] || "").trim()
+            : "";
+          const phoneVal = mappedColumns.phone
+            ? String(row[mappedColumns.phone] || "").trim()
+            : "";
+
+          let invType: "SINGLE" | "COUPLE" = "SINGLE";
+          if (mappedColumns.invitationType) {
+            const rawType = String(
+              row[mappedColumns.invitationType] || "",
+            ).toLowerCase();
+            if (
+              rawType.includes("couple") ||
+              rawType.includes("deux") ||
+              rawType.includes("2")
+            ) {
+              invType = "COUPLE";
+            }
+          } else if (
+            mappedColumns.plusOneFirstName &&
+            String(row[mappedColumns.plusOneFirstName] || "").trim()
+          ) {
+            invType = "COUPLE";
+          }
+
+          const p1Fn = mappedColumns.plusOneFirstName
+            ? String(row[mappedColumns.plusOneFirstName] || "").trim()
+            : "";
+          const p1Ln = mappedColumns.plusOneLastName
+            ? String(row[mappedColumns.plusOneLastName] || "").trim()
+            : "";
+          const tableName = mappedColumns.table
+            ? String(row[mappedColumns.table] || "").trim()
+            : "";
+
+          return {
+            firstName: fName,
+            lastName: lName,
+            email: emailVal,
+            phone: phoneVal,
+            invitationType: invType,
+            plusOneFirstName: p1Fn,
+            plusOneLastName: p1Ln,
+            tableName,
+          };
+        })
+        .filter((g) => g.firstName.length > 0 && g.lastName.length > 0);
+
+      if (guestsToImport.length === 0) {
+        toast.error("Aucun invité valide à importer.");
+        return;
+      }
+
+      const res = await fetch(`/api/events/${eventId}/guests/import`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ guests: guestsToImport }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error ?? "Erreur lors de l'importation.");
+        return;
+      }
+
+      toast.success(
+        `Importation réussie : ${data.created} invité(s) ajouté(s).`,
+      );
+      setImportOpen(false);
+      clearUploadedFile();
+      await refreshGuests();
+    } catch (err) {
+      console.error(err);
+      toast.error("Erreur lors de l'importation.");
+    } finally {
+      setImportLoading(false);
+    }
+  }
+
+  const previewRows = rawData.slice(0, 5).map((row) => {
+    const fName = mappedColumns.firstName
+      ? String(row[mappedColumns.firstName] || "").trim()
+      : "";
+    const lName = mappedColumns.lastName
+      ? String(row[mappedColumns.lastName] || "").trim()
+      : "";
+    const emailVal = mappedColumns.email
+      ? String(row[mappedColumns.email] || "").trim()
+      : "";
+    const plusOne = mappedColumns.plusOneFirstName
+      ? `${String(row[mappedColumns.plusOneFirstName] || "")} ${mappedColumns.plusOneLastName ? String(row[mappedColumns.plusOneLastName] || "") : ""}`.trim()
+      : "";
+    const tableName = mappedColumns.table
+      ? String(row[mappedColumns.table] || "").trim()
+      : "";
+    return {
+      name: `${fName} ${lName}`.trim(),
+      email: emailVal,
+      plusOne,
+      tableName,
+    };
+  });
 
   return (
     <>
@@ -215,9 +610,44 @@ export function GuestsClient({ eventId, initialGuests }: Props) {
             Invités
           </h1>
           <p className="mt-0.5 text-sm text-slate-500">
-            {guests.length} fiche{guests.length !== 1 ? "s" : ""} · {totalAttendees} personne
+            {guests.length} fiche{guests.length !== 1 ? "s" : ""} ·{" "}
+            {totalAttendees} personne
             {totalAttendees !== 1 ? "s" : ""} au total
           </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* Import Excel */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setImportOpen(true)}
+            className="gap-2 border-[#E8ECF4] text-slate-600 hover:bg-slate-50 cursor-pointer h-10 px-4 rounded-xl"
+          >
+            <Upload className="h-4 w-4" />
+            Importer Excel
+          </Button>
+
+          {/* Export Excel */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportExcel}
+            className="gap-2 border-[#E8ECF4] text-slate-600 hover:bg-slate-50 cursor-pointer h-10 px-4 rounded-xl"
+          >
+            <Download className="h-4 w-4" />
+            Exporter Excel
+          </Button>
+
+          {/* Ajouter un invité */}
+          <Button
+            size="sm"
+            onClick={() => setCreateOpen(true)}
+            className="gap-2 bg-[#1E5FF5] text-white hover:bg-[#154ED0] cursor-pointer h-10 px-4 rounded-xl"
+          >
+            <Plus className="h-4 w-4" />
+            Ajouter un invité
+          </Button>
         </div>
       </div>
 
@@ -409,7 +839,8 @@ export function GuestsClient({ eventId, initialGuests }: Props) {
                 {viewGuest.invitationType === "COUPLE" && (
                   <p className="text-sm text-pink-600 flex items-center gap-1.5">
                     <Heart className="h-3.5 w-3.5 shrink-0" />
-                    Couple avec {viewGuest.plusOneFirstName || ""} {viewGuest.plusOneLastName || ""}
+                    Couple avec {viewGuest.plusOneFirstName || ""}{" "}
+                    {viewGuest.plusOneLastName || ""}
                   </p>
                 )}
               </div>
@@ -433,20 +864,28 @@ export function GuestsClient({ eventId, initialGuests }: Props) {
               {/* Meta */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-xl bg-[#F4F6FB] px-4 py-3">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Table</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                    Table
+                  </p>
                   {viewGuest.table ? (
                     <span className="inline-flex items-center gap-1 text-sm font-semibold text-[#1E5FF5]">
                       <Armchair className="h-3.5 w-3.5 shrink-0" />
                       {viewGuest.table.name}
                     </span>
                   ) : (
-                    <span className="text-sm text-slate-400 italic">Non assigné</span>
+                    <span className="text-sm text-slate-400 italic">
+                      Non assigné
+                    </span>
                   )}
                 </div>
 
                 <div className="rounded-xl bg-[#F4F6FB] px-4 py-3">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">RSVP</p>
-                  <span className={`inline-flex items-center gap-1 text-xs font-medium rounded-lg px-2 py-0.5 ${RSVP_STYLES[viewGuest.rsvpStatus]}`}>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                    RSVP
+                  </p>
+                  <span
+                    className={`inline-flex items-center gap-1 text-xs font-medium rounded-lg px-2 py-0.5 ${RSVP_STYLES[viewGuest.rsvpStatus]}`}
+                  >
                     {RSVP_ICONS[viewGuest.rsvpStatus]}
                     {RSVP_LABELS[viewGuest.rsvpStatus]}
                   </span>
@@ -562,7 +1001,9 @@ export function GuestsClient({ eventId, initialGuests }: Props) {
               <div className="relative">
                 <select
                   value={editInvitationType}
-                  onChange={(e) => setEditInvitationType(e.target.value as "SINGLE" | "COUPLE")}
+                  onChange={(e) =>
+                    setEditInvitationType(e.target.value as "SINGLE" | "COUPLE")
+                  }
                   className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-[14px] outline-none appearance-none focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 shadow-xs cursor-pointer"
                 >
                   <option value="SINGLE">Seul(e)</option>
@@ -619,7 +1060,9 @@ export function GuestsClient({ eventId, initialGuests }: Props) {
               </Button>
               <Button
                 type="submit"
-                disabled={editLoading || !editFirstName.trim() || !editLastName.trim()}
+                disabled={
+                  editLoading || !editFirstName.trim() || !editLastName.trim()
+                }
                 className="h-10 px-5 rounded-xl bg-[#1E5FF5] text-white text-sm font-medium hover:bg-[#154ED0] transition-colors shadow-xs cursor-pointer"
               >
                 {editLoading ? (
@@ -639,7 +1082,10 @@ export function GuestsClient({ eventId, initialGuests }: Props) {
       {/* ═══════════════════════════════════════════════════════════════════
           Delete Confirm Dialog
       ══════════════════════════════════════════════════════════════════════ */}
-      <Dialog open={!!deleteGuest} onOpenChange={(o) => !o && setDeleteGuest(null)}>
+      <Dialog
+        open={!!deleteGuest}
+        onOpenChange={(o) => !o && setDeleteGuest(null)}
+      >
         <DialogContent className="max-w-sm w-full rounded-[24px] bg-white p-6 shadow-2xl border-none gap-0 overflow-hidden outline-none">
           <DialogHeader className="pb-4 border-b border-[#E8ECF4] mb-5">
             <DialogTitle className="text-[18px] font-bold text-slate-800">
@@ -682,6 +1128,606 @@ export function GuestsClient({ eventId, initialGuests }: Props) {
                 "Supprimer"
               )}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Create Guest Dialog ──────────────────────────────────────────────── */}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="max-w-md w-full rounded-[24px] bg-white p-6 shadow-2xl border-none gap-0 overflow-hidden outline-none">
+          <DialogHeader className="pb-4 border-b border-[#E8ECF4] mb-5">
+            <DialogTitle className="text-[18px] font-bold text-slate-800">
+              Ajouter un invité
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreateSubmit} className="space-y-4 pt-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="create-firstname"
+                  className="text-[14px] font-medium text-slate-700 mb-1.5 block"
+                >
+                  Prénom <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="create-firstname"
+                  placeholder="Ex : Jean"
+                  value={createFirstName}
+                  onChange={(e) => setCreateFirstName(e.target.value)}
+                  required
+                  autoFocus
+                  className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-[14px] outline-none transition-all focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 shadow-xs"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="create-lastname"
+                  className="text-[14px] font-medium text-slate-700 mb-1.5 block"
+                >
+                  Nom <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="create-lastname"
+                  placeholder="Ex : Dupont"
+                  value={createLastName}
+                  onChange={(e) => setCreateLastName(e.target.value)}
+                  required
+                  className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-[14px] outline-none transition-all focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 shadow-xs"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="create-email"
+                className="text-[14px] font-medium text-slate-700 mb-1.5 block"
+              >
+                Adresse e-mail
+              </Label>
+              <Input
+                id="create-email"
+                type="email"
+                placeholder="Ex : jean.dupont@gmail.com"
+                value={createEmail}
+                onChange={(e) => setCreateEmail(e.target.value)}
+                className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-[14px] outline-none transition-all focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 shadow-xs"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="create-phone"
+                className="text-[14px] font-medium text-slate-700 mb-1.5 block"
+              >
+                Téléphone
+              </Label>
+              <Input
+                id="create-phone"
+                placeholder="Ex : 0612345678"
+                value={createPhone}
+                onChange={(e) => setCreatePhone(e.target.value)}
+                className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-[14px] outline-none transition-all focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 shadow-xs"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="create-invitation-type"
+                className="text-[14px] font-medium text-slate-700 mb-1.5 block"
+              >
+                Type d&apos;invitation <span className="text-red-500">*</span>
+              </Label>
+              <div className="relative">
+                <select
+                  id="create-invitation-type"
+                  value={createInvitationType}
+                  onChange={(e) =>
+                    setCreateInvitationType(
+                      e.target.value as "SINGLE" | "COUPLE",
+                    )
+                  }
+                  className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-[14px] outline-none appearance-none focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 shadow-xs cursor-pointer"
+                >
+                  <option value="SINGLE">Seul</option>
+                  <option value="COUPLE">Couple</option>
+                </select>
+                <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-400">
+                  <X className="h-4 w-4 rotate-45" />
+                </div>
+              </div>
+            </div>
+
+            {createInvitationType === "COUPLE" && (
+              <div className="border-t border-slate-100 pt-4 mt-2 space-y-3">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  Accompagnateur / Conjoint
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label
+                      htmlFor="create-plusone-firstname"
+                      className="text-[14px] font-medium text-slate-700 mb-1.5 block"
+                    >
+                      Prénom <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="create-plusone-firstname"
+                      placeholder="Prénom"
+                      value={createPlusOneFirstName}
+                      onChange={(e) =>
+                        setCreatePlusOneFirstName(e.target.value)
+                      }
+                      required
+                      className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-[14px] outline-none transition-all focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 shadow-xs"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label
+                      htmlFor="create-plusone-lastname"
+                      className="text-[14px] font-medium text-slate-700 mb-1.5 block"
+                    >
+                      Nom <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="create-plusone-lastname"
+                      placeholder="Nom"
+                      value={createPlusOneLastName}
+                      onChange={(e) => setCreatePlusOneLastName(e.target.value)}
+                      required
+                      className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-[14px] outline-none transition-all focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 shadow-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <DialogFooter className="bg-[#F8FAFC] border-t border-[#E8ECF4] px-6 py-4 flex justify-end gap-3 rounded-b-[24px] -mx-6 -mb-6 mt-6">
+              <Button
+                type="button"
+                onClick={() => setCreateOpen(false)}
+                disabled={createLoading}
+                className="h-10 px-5 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
+              >
+                Annuler
+              </Button>
+              <Button
+                type="submit"
+                disabled={
+                  createLoading ||
+                  !createFirstName.trim() ||
+                  !createLastName.trim()
+                }
+                className="h-10 px-5 rounded-xl bg-[#1E5FF5] text-white text-sm font-medium hover:bg-[#154ED0] transition-colors shadow-xs cursor-pointer"
+              >
+                {createLoading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                    Création…
+                  </span>
+                ) : (
+                  "Créer"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Import Guests Dialog ─────────────────────────────────────────────── */}
+      <Dialog
+        open={importOpen}
+        onOpenChange={(o) => {
+          if (!o) {
+            setImportOpen(false);
+            clearUploadedFile();
+          }
+        }}
+      >
+        <DialogContent className="w-[min(66.67vw,72rem)] max-w-[calc(100vw-2rem)] rounded-3xl bg-white p-6 shadow-2xl border-none gap-0 outline-none">
+          <DialogHeader className="pb-4 border-b border-[#E8ECF4] mb-4">
+            <DialogTitle className="text-[18px] font-bold text-slate-800">
+              Importer des invités
+            </DialogTitle>
+            <p className="text-xs text-slate-500 mt-1">
+              Chargez un fichier Excel avec les colonnes Prénom, Nom, Email,
+              Téléphone, Accompagnateur.
+            </p>
+          </DialogHeader>
+
+          {/* Main content based on file status */}
+          <div className="py-2">
+            {!uploadedFileName ? (
+              // Step 1: Upload Dropzone
+              <div
+                onDragEnter={handleDrag}
+                onDragOver={handleDrag}
+                onDragLeave={handleDrag}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className={`border-2 border-dashed rounded-2xl flex flex-col items-center justify-center py-10 px-4 transition-all cursor-pointer ${
+                  dragActive
+                    ? "border-[#1E5FF5] bg-blue-50/50"
+                    : "border-slate-200 hover:border-[#1E5FF5] hover:bg-slate-50/50"
+                }`}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
+
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-50 text-[#1E5FF5] mb-4">
+                  <Upload className="h-6 w-6" />
+                </div>
+
+                <p className="text-sm font-medium text-slate-700 text-center">
+                  Glissez un fichier ici ou
+                </p>
+                <button
+                  type="button"
+                  className="text-sm font-semibold text-[#1E5FF5] hover:underline mt-1 cursor-pointer"
+                >
+                  parcourir vos fichiers
+                </button>
+
+                <p className="text-[11px] text-slate-400 mt-3">
+                  Formats : .xlsx, .xls, .csv
+                </p>
+              </div>
+            ) : (
+              // Step 2: Mapping and Preview
+              <div className="space-y-4 max-h-[380px] overflow-y-auto pr-1">
+                {/* File badge */}
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <FileSpreadsheet className="h-5 w-5 text-emerald-600 shrink-0" />
+                    <span className="text-xs font-semibold text-slate-700 truncate">
+                      {uploadedFileName}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={clearUploadedFile}
+                    className="p-1 rounded-lg text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {/* Column Correspondence */}
+                <div>
+                  <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3">
+                    Correspondance des colonnes
+                  </h3>
+
+                  <div className="space-y-2">
+                    {/* Prénom mapping */}
+                    <div className="flex items-center justify-between gap-4 py-1.5 border-b border-slate-100 last:border-0">
+                      <Label className="text-[14px] font-medium text-slate-700">
+                        Prénom <span className="text-red-500">*</span>
+                      </Label>
+                      <div className="relative w-2/3">
+                        <select
+                          value={mappedColumns.firstName}
+                          onChange={(e) =>
+                            setMappedColumns({
+                              ...mappedColumns,
+                              firstName: e.target.value,
+                            })
+                          }
+                          className="w-full h-10 pl-3 pr-8 rounded-xl border border-slate-200 bg-white text-slate-800 text-[13px] outline-none appearance-none focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 cursor-pointer"
+                        >
+                          <option value="">— Choisir —</option>
+                          {fileHeaders.map((header) => (
+                            <option key={header} value={header}>
+                              {header}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-400">
+                          <X className="h-3.5 w-3.5 rotate-45" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Nom mapping */}
+                    <div className="flex items-center justify-between gap-4 py-1.5 border-b border-slate-100 last:border-0">
+                      <Label className="text-[14px] font-medium text-slate-700">
+                        Nom <span className="text-red-500">*</span>
+                      </Label>
+                      <div className="relative w-2/3">
+                        <select
+                          value={mappedColumns.lastName}
+                          onChange={(e) =>
+                            setMappedColumns({
+                              ...mappedColumns,
+                              lastName: e.target.value,
+                            })
+                          }
+                          className="w-full h-10 pl-3 pr-8 rounded-xl border border-slate-200 bg-white text-slate-800 text-[13px] outline-none appearance-none focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 cursor-pointer"
+                        >
+                          <option value="">— Choisir —</option>
+                          {fileHeaders.map((header) => (
+                            <option key={header} value={header}>
+                              {header}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-400">
+                          <X className="h-3.5 w-3.5 rotate-45" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Email mapping */}
+                    <div className="flex items-center justify-between gap-4 py-1.5 border-b border-slate-100 last:border-0">
+                      <Label className="text-[14px] font-medium text-slate-700">
+                        Email
+                      </Label>
+                      <div className="relative w-2/3">
+                        <select
+                          value={mappedColumns.email}
+                          onChange={(e) =>
+                            setMappedColumns({
+                              ...mappedColumns,
+                              email: e.target.value,
+                            })
+                          }
+                          className="w-full h-10 pl-3 pr-8 rounded-xl border border-slate-200 bg-white text-slate-800 text-[13px] outline-none appearance-none focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 cursor-pointer"
+                        >
+                          <option value="">— Choisir (Optionnel) —</option>
+                          {fileHeaders.map((header) => (
+                            <option key={header} value={header}>
+                              {header}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-400">
+                          <X className="h-3.5 w-3.5 rotate-45" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Téléphone mapping */}
+                    <div className="flex items-center justify-between gap-4 py-1.5 border-b border-slate-100 last:border-0">
+                      <Label className="text-[14px] font-medium text-slate-700">
+                        Téléphone
+                      </Label>
+                      <div className="relative w-2/3">
+                        <select
+                          value={mappedColumns.phone}
+                          onChange={(e) =>
+                            setMappedColumns({
+                              ...mappedColumns,
+                              phone: e.target.value,
+                            })
+                          }
+                          className="w-full h-10 pl-3 pr-8 rounded-xl border border-slate-200 bg-white text-slate-800 text-[13px] outline-none appearance-none focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 cursor-pointer"
+                        >
+                          <option value="">— Choisir (Optionnel) —</option>
+                          {fileHeaders.map((header) => (
+                            <option key={header} value={header}>
+                              {header}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-400">
+                          <X className="h-3.5 w-3.5 rotate-45" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Invitation Type mapping */}
+                    <div className="flex items-center justify-between gap-4 py-1.5 border-b border-slate-100 last:border-0">
+                      <Label className="text-[14px] font-medium text-slate-700">
+                        Type d&apos;invitation
+                      </Label>
+                      <div className="relative w-2/3">
+                        <select
+                          value={mappedColumns.invitationType}
+                          onChange={(e) =>
+                            setMappedColumns({
+                              ...mappedColumns,
+                              invitationType: e.target.value,
+                            })
+                          }
+                          className="w-full h-10 pl-3 pr-8 rounded-xl border border-slate-200 bg-white text-slate-800 text-[13px] outline-none appearance-none focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 cursor-pointer"
+                        >
+                          <option value="">— Choisir (Optionnel) —</option>
+                          {fileHeaders.map((header) => (
+                            <option key={header} value={header}>
+                              {header}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-400">
+                          <X className="h-3.5 w-3.5 rotate-45" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Accompagnateur Prénom mapping */}
+                    <div className="flex items-center justify-between gap-4 py-1.5 border-b border-slate-100 last:border-0">
+                      <Label className="text-[14px] font-medium text-slate-700">
+                        Accompagnateur Prénom
+                      </Label>
+                      <div className="relative w-2/3">
+                        <select
+                          value={mappedColumns.plusOneFirstName}
+                          onChange={(e) =>
+                            setMappedColumns({
+                              ...mappedColumns,
+                              plusOneFirstName: e.target.value,
+                            })
+                          }
+                          className="w-full h-10 pl-3 pr-8 rounded-xl border border-slate-200 bg-white text-slate-800 text-[13px] outline-none appearance-none focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 cursor-pointer"
+                        >
+                          <option value="">— Choisir (Optionnel) —</option>
+                          {fileHeaders.map((header) => (
+                            <option key={header} value={header}>
+                              {header}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-400">
+                          <X className="h-3.5 w-3.5 rotate-45" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Accompagnateur Nom mapping */}
+                    <div className="flex items-center justify-between gap-4 py-1.5 border-b border-slate-100 last:border-0">
+                      <Label className="text-[14px] font-medium text-slate-700">
+                        Accompagnateur Nom
+                      </Label>
+                      <div className="relative w-2/3">
+                        <select
+                          value={mappedColumns.plusOneLastName}
+                          onChange={(e) =>
+                            setMappedColumns({
+                              ...mappedColumns,
+                              plusOneLastName: e.target.value,
+                            })
+                          }
+                          className="w-full h-10 pl-3 pr-8 rounded-xl border border-slate-200 bg-white text-slate-800 text-[13px] outline-none appearance-none focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 cursor-pointer"
+                        >
+                          <option value="">— Choisir (Optionnel) —</option>
+                          {fileHeaders.map((header) => (
+                            <option key={header} value={header}>
+                              {header}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-400">
+                          <X className="h-3.5 w-3.5 rotate-45" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Table mapping */}
+                    <div className="flex items-center justify-between gap-4 py-1.5 border-b border-slate-100 last:border-0">
+                      <Label className="text-[14px] font-medium text-slate-700">
+                        Table
+                      </Label>
+                      <div className="relative w-2/3">
+                        <select
+                          value={mappedColumns.table}
+                          onChange={(e) =>
+                            setMappedColumns({
+                              ...mappedColumns,
+                              table: e.target.value,
+                            })
+                          }
+                          className="w-full h-10 pl-3 pr-8 rounded-xl border border-slate-200 bg-white text-slate-800 text-[13px] outline-none appearance-none focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 cursor-pointer"
+                        >
+                          <option value="">— Choisir (Optionnel) —</option>
+                          {fileHeaders.map((header) => (
+                            <option key={header} value={header}>
+                              {header}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-400">
+                          <X className="h-3.5 w-3.5 rotate-45" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Preview */}
+                {mappedColumns.firstName && mappedColumns.lastName && (
+                  <div>
+                    <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 mt-2">
+                      Aperçu (5 premières lignes)
+                    </h3>
+
+                    <div className="overflow-hidden rounded-xl border border-slate-100 bg-slate-50/20">
+                      <table className="w-full border-collapse text-left text-xs">
+                        <thead>
+                          <tr className="bg-slate-50 border-b border-slate-200">
+                            <th className="px-3 py-2 font-semibold text-slate-500">
+                              Nom complet
+                            </th>
+                            <th className="px-3 py-2 font-semibold text-slate-500">
+                              Email
+                            </th>
+                            <th className="px-3 py-2 font-semibold text-slate-500">
+                              Accompagnateur
+                            </th>
+                            <th className="px-3 py-2 font-semibold text-slate-500">
+                              Table
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {previewRows.map((row, idx) => (
+                            <tr
+                              key={idx}
+                              className="border-b border-slate-100 last:border-none"
+                            >
+                              <td className="px-3 py-2 text-slate-700 font-medium truncate max-w-[150px]">
+                                {row.name || (
+                                  <span className="text-slate-400 italic">
+                                    Vide
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2 text-slate-650 truncate max-w-[150px]">
+                                {row.email || "—"}
+                              </td>
+                              <td className="px-3 py-2 text-slate-650 truncate max-w-[150px]">
+                                {row.plusOne || "—"}
+                              </td>
+                              <td className="px-3 py-2 text-slate-650 truncate max-w-[150px]">
+                                {row.tableName || "—"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="bg-[#F8FAFC] border-t border-[#E8ECF4] px-6 py-4 flex justify-end gap-3 rounded-b-[24px] -mx-6 -mb-6 mt-6">
+            <Button
+              type="button"
+              onClick={() => {
+                setImportOpen(false);
+                clearUploadedFile();
+              }}
+              disabled={importLoading}
+              className="h-10 px-5 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
+            >
+              Annuler
+            </Button>
+            {uploadedFileName && (
+              <Button
+                type="button"
+                onClick={handleImportSubmit}
+                disabled={
+                  importLoading ||
+                  !mappedColumns.firstName ||
+                  !mappedColumns.lastName
+                }
+                className="h-10 px-5 rounded-xl bg-[#1E5FF5] text-white text-sm font-medium hover:bg-[#154ED0] transition-colors shadow-xs disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              >
+                {importLoading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                    Importation…
+                  </span>
+                ) : (
+                  "Importer"
+                )}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
