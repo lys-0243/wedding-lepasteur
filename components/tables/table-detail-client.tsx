@@ -2,7 +2,7 @@
 
 import { useState, useRef, useTransition, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, Plus, Upload, Pencil, Trash2, Users, FileSpreadsheet, X, AlertTriangle, Link2Off, Download } from "lucide-react";
+import { ArrowLeft, Plus, Upload, Pencil, Trash2, Users, FileSpreadsheet, X, AlertTriangle, Link2Off, Download, Eye, Mail, Phone, Calendar, Heart, Armchair, Clock, UserCheck, UserX } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,9 @@ type GuestRow = {
   plusOneFirstName: string | null;
   plusOneLastName: string | null;
   rsvpStatus: "PENDING" | "CONFIRMED" | "DECLINED";
+  plusOneRsvpStatus: "PENDING" | "CONFIRMED" | "DECLINED" | null;
+  respondedAt: Date | string | null;
+  createdAt: Date | string;
 };
 
 type TableDetail = {
@@ -41,10 +44,39 @@ type Props = {
   table: TableDetail;
 };
 
+const RSVP_LABELS: Record<string, string> = {
+  PENDING: "En attente",
+  CONFIRMED: "Confirmé",
+  DECLINED: "Décliné",
+};
+
+const RSVP_STYLES: Record<string, string> = {
+  PENDING: "bg-amber-50 text-amber-700 border border-amber-200",
+  CONFIRMED: "bg-emerald-50 text-emerald-700 border border-emerald-200",
+  DECLINED: "bg-red-50 text-red-600 border border-red-200",
+};
+
+const RSVP_ICONS: Record<string, React.ReactNode> = {
+  PENDING: <Clock className="h-3 w-3" />,
+  CONFIRMED: <UserCheck className="h-3 w-3" />,
+  DECLINED: <UserX className="h-3 w-3" />,
+};
+
+function formatDate(iso: Date | string) {
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(iso));
+}
+
 export function TableDetailClient({ eventId, table: initialTable }: Props) {
   const [table, setTable] = useState<TableDetail>(initialTable);
   const [search, setSearch] = useState("");
   const [isPending, startTransition] = useTransition();
+
+  // ── View guest dialog ────────────────────────────────────────────────────
+  const [viewGuest, setViewGuest] = useState<GuestRow | null>(null);
 
   // ── Create guest dialog ───────────────────────────────────────────────────
   const [createOpen, setCreateOpen] = useState(false);
@@ -601,7 +633,7 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
 
       {/* ── Guest List Table ──────────────────────────────────────────────── */}
       <div className="mt-4 overflow-hidden rounded-2xl border border-[#E8ECF4] bg-white shadow-sm">
-        <div className="grid grid-cols-[1.5fr_1.5fr_1fr_1.2fr_100px] items-center border-b border-[#E8ECF4] bg-slate-50/60 px-5 py-3 text-[0.7rem] font-bold uppercase tracking-widest text-slate-400">
+        <div className="grid grid-cols-[1.5fr_1.5fr_1fr_1.2fr_140px] items-center border-b border-[#E8ECF4] bg-slate-50/60 px-5 py-3 text-[0.7rem] font-bold uppercase tracking-widest text-slate-400">
           <span>Nom</span>
           <span>Contact</span>
           <span className="text-center">Type</span>
@@ -644,7 +676,7 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
               return (
                 <li
                   key={guest.id}
-                  className={`grid grid-cols-[1.5fr_1.5fr_1fr_1.2fr_100px] items-center gap-2 px-5 py-3.5 transition-colors hover:bg-slate-50/60 ${
+                  className={`grid grid-cols-[1.5fr_1.5fr_1fr_1.2fr_140px] items-center gap-2 px-5 py-3.5 transition-colors hover:bg-slate-50/60 ${
                     i !== filteredGuests.length - 1 ? "border-b border-[#E8ECF4]" : ""
                   }`}
                 >
@@ -680,6 +712,13 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
 
                   {/* Actions */}
                   <div className="flex items-center justify-center gap-1">
+                    <button
+                      onClick={() => setViewGuest(guest)}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-[#EEF0FF] hover:text-[#1E5FF5]"
+                      title="Voir le détail"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                    </button>
                     <button
                       onClick={() => {
                         setEditGuest(guest);
@@ -1495,6 +1534,113 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
                 )}
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── View Guest Dialog ────────────────────────────────────────────────── */}
+      <Dialog open={!!viewGuest} onOpenChange={(o) => !o && setViewGuest(null)}>
+        <DialogContent className="max-w-md w-full rounded-[24px] bg-white p-6 shadow-2xl border-none gap-0 overflow-hidden outline-none">
+          <DialogHeader className="pb-4 border-b border-[#E8ECF4] mb-5">
+            <DialogTitle className="text-[18px] font-bold text-slate-800">
+              Détail de l&apos;invité
+            </DialogTitle>
+          </DialogHeader>
+
+          {viewGuest && (
+            <div className="space-y-4">
+              {/* Name block */}
+              <div className="rounded-xl bg-[#F4F6FB] px-4 py-3 space-y-1">
+                <p className="text-base font-bold text-slate-800">
+                  {viewGuest.firstName} {viewGuest.lastName}
+                </p>
+                {viewGuest.invitationType === "COUPLE" && (
+                  <p className="text-sm text-pink-600 flex items-center gap-1.5">
+                    <Heart className="h-3.5 w-3.5 shrink-0" />
+                    Couple avec {viewGuest.plusOneFirstName || ""} {viewGuest.plusOneLastName || ""}
+                  </p>
+                )}
+              </div>
+
+              {/* Contact */}
+              <div className="space-y-2">
+                {viewGuest.email && (
+                  <div className="flex items-center gap-2 text-sm text-slate-600">
+                    <Mail className="h-4 w-4 shrink-0 text-slate-400" />
+                    <span className="truncate">{viewGuest.email}</span>
+                  </div>
+                )}
+                {viewGuest.phone && (
+                  <div className="flex items-center gap-2 text-sm text-slate-600">
+                    <Phone className="h-4 w-4 shrink-0 text-slate-400" />
+                    <span>{viewGuest.phone}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Meta */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl bg-[#F4F6FB] px-4 py-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Table</p>
+                  <span className="inline-flex items-center gap-1 text-sm font-semibold text-[#1E5FF5]">
+                    <Armchair className="h-3.5 w-3.5 shrink-0" />
+                    {table.name}
+                  </span>
+                </div>
+
+                <div className="rounded-xl bg-[#F4F6FB] px-4 py-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">RSVP</p>
+                  <span className={`inline-flex items-center gap-1 text-xs font-medium rounded-lg px-2 py-0.5 ${RSVP_STYLES[viewGuest.rsvpStatus]}`}>
+                    {RSVP_ICONS[viewGuest.rsvpStatus]}
+                    {RSVP_LABELS[viewGuest.rsvpStatus]}
+                  </span>
+                </div>
+              </div>
+
+              {viewGuest.respondedAt && (
+                <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                  <Calendar className="h-3.5 w-3.5 shrink-0" />
+                  Réponse reçue le {formatDate(viewGuest.respondedAt)}
+                </div>
+              )}
+
+              {viewGuest.createdAt && (
+                <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                  <Calendar className="h-3.5 w-3.5 shrink-0" />
+                  Ajouté le {formatDate(viewGuest.createdAt)}
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="bg-[#F8FAFC] border-t border-[#E8ECF4] px-6 py-4 flex justify-between gap-3 rounded-b-[24px] -mx-6 -mb-6 mt-6">
+            <Button
+              type="button"
+              onClick={() => {
+                if (viewGuest) {
+                  setEditGuest(viewGuest);
+                  setEditFirstName(viewGuest.firstName);
+                  setEditLastName(viewGuest.lastName);
+                  setEditEmail(viewGuest.email || "");
+                  setEditPhone(viewGuest.phone || "");
+                  setViewGuest(null);
+                  setEditInvitationType(viewGuest.invitationType);
+                  setEditPlusOneFirstName(viewGuest.plusOneFirstName || "");
+                  setEditPlusOneLastName(viewGuest.plusOneLastName || "");
+                }
+              }}
+              className="h-10 px-5 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors shadow-xs cursor-pointer gap-2"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Modifier
+            </Button>
+            <Button
+              type="button"
+              onClick={() => setViewGuest(null)}
+              className="h-10 px-5 rounded-xl bg-[#1E5FF5] text-white text-sm font-medium hover:bg-[#154ED0] transition-colors shadow-xs cursor-pointer"
+            >
+              Fermer
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

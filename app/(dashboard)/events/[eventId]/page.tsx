@@ -39,7 +39,7 @@ export default async function EventDashboardPage({ params }: EventPageProps) {
       profileImageUrl: true,
       coverImageUrl: true,
       _count: {
-        select: { guests: true, drinks: true, tables: true },
+        select: { guests: true, eventDrinks: true, tables: true },
       },
     },
   });
@@ -63,7 +63,7 @@ export default async function EventDashboardPage({ params }: EventPageProps) {
     },
     {
       label: "Boissons",
-      value: event._count.drinks,
+      value: event._count.eventDrinks,
       icon: GlassWater,
       color: "text-emerald-500",
       bg: "bg-emerald-50",

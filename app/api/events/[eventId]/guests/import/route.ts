@@ -13,6 +13,7 @@ const importGuestsSchema = z.object({
       invitationType: z.enum(["SINGLE", "COUPLE"]),
       plusOneFirstName: z.string().optional(),
       plusOneLastName: z.string().optional(),
+      tableName: z.string().optional(),
     })
   ),
 });
@@ -38,13 +39,48 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
 
   const { guests } = parsed.data;
 
-  // Import guests at the event level (tableId: null)
-  const results = await Promise.allSettled(
-    guests.map((g) =>
-      prisma.guest.create({
+  // Resolve tables first (avoid race conditions in concurrent prisma.table.create)
+  const tableCache = new Map<string, string>(); // tableName (lowercase) -> tableId
+  const uniqueTableNames = Array.from(
+    new Set(
+      guests
+        .map((g) => g.tableName?.trim())
+        .filter((name): name is string => !!name)
+    )
+  );
+
+  for (const tableName of uniqueTableNames) {
+    let table = await prisma.table.findFirst({
+      where: {
+        eventId,
+        name: { equals: tableName, mode: "insensitive" },
+      },
+    });
+
+    if (!table) {
+      table = await prisma.table.create({
         data: {
           eventId,
-          tableId: null,
+          name: tableName,
+          capacity: 10, // default capacity
+        },
+      });
+    }
+
+    tableCache.set(tableName.toLowerCase(), table.id);
+  }
+
+  // Import guests
+  const results = await Promise.allSettled(
+    guests.map((g) => {
+      const matchedTableId = g.tableName
+        ? tableCache.get(g.tableName.trim().toLowerCase()) || null
+        : null;
+
+      return prisma.guest.create({
+        data: {
+          eventId,
+          tableId: matchedTableId,
           firstName: g.firstName.trim(),
           lastName: g.lastName.trim(),
           email: g.email?.trim() || null,
@@ -53,8 +89,8 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
           plusOneFirstName: g.invitationType === "COUPLE" ? g.plusOneFirstName?.trim() || null : null,
           plusOneLastName: g.invitationType === "COUPLE" ? g.plusOneLastName?.trim() || null : null,
         },
-      })
-    )
+      });
+    })
   );
 
   const created = results.filter((r) => r.status === "fulfilled").length;

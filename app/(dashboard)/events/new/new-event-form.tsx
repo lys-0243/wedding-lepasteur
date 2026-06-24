@@ -6,6 +6,7 @@ import { ImagePlus, Loader2, X } from "lucide-react";
 
 type NewEventFormProps = {
   action: (formData: FormData) => Promise<void>;
+  catalogDrinks: Array<{ id: string; name: string; isAlcoholic: boolean }>;
 };
 
 const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ?? "";
@@ -61,7 +62,9 @@ function ImageUploadSlot({
 
       {value ? (
         /* Preview with hover overlay */
-        <div className={`group relative overflow-hidden rounded-xl border border-[#DCE2ED] ${previewClass}`}>
+        <div
+          className={`group relative overflow-hidden rounded-xl border border-[#DCE2ED] ${previewClass}`}
+        >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={value}
@@ -113,16 +116,25 @@ function ImageUploadSlot({
   );
 }
 
-export function NewEventForm({ action }: NewEventFormProps) {
+export function NewEventForm({ action, catalogDrinks }: NewEventFormProps) {
   const [profileImageUrl, setProfileImageUrl] = useState("");
   const [coverImageUrl, setCoverImageUrl] = useState("");
   const [uploadingField, setUploadingField] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [selectedDrinkIds, setSelectedDrinkIds] = useState<string[]>([]);
+
+  function toggleDrink(drinkId: string) {
+    setSelectedDrinkIds((prev) =>
+      prev.includes(drinkId)
+        ? prev.filter((id) => id !== drinkId)
+        : [...prev, drinkId],
+    );
+  }
 
   const uploadFile = async (
     file: File,
     setter: (url: string) => void,
-    field: string
+    field: string,
   ) => {
     setUploadError(null);
     setUploadingField(field);
@@ -135,7 +147,7 @@ export function NewEventForm({ action }: NewEventFormProps) {
 
       const res = await fetch(
         `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
-        { method: "POST", body: formData }
+        { method: "POST", body: formData },
       );
 
       const data = (await res.json()) as {
@@ -150,7 +162,7 @@ export function NewEventForm({ action }: NewEventFormProps) {
       setter(data.secure_url);
     } catch (err) {
       setUploadError(
-        err instanceof Error ? err.message : "Erreur lors de l'upload."
+        err instanceof Error ? err.message : "Erreur lors de l'upload.",
       );
     } finally {
       setUploadingField(null);
@@ -187,7 +199,10 @@ export function NewEventForm({ action }: NewEventFormProps) {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="grid gap-1.5">
-          <label htmlFor="eventDate" className="text-sm font-semibold text-slate-700">
+          <label
+            htmlFor="eventDate"
+            className="text-sm font-semibold text-slate-700"
+          >
             Date
           </label>
           <input
@@ -199,7 +214,10 @@ export function NewEventForm({ action }: NewEventFormProps) {
         </div>
 
         <div className="grid gap-1.5">
-          <label htmlFor="venue" className="text-sm font-semibold text-slate-700">
+          <label
+            htmlFor="venue"
+            className="text-sm font-semibold text-slate-700"
+          >
             Lieu
           </label>
           <input
@@ -213,7 +231,10 @@ export function NewEventForm({ action }: NewEventFormProps) {
       </div>
 
       <div className="grid gap-1.5">
-        <label htmlFor="description" className="text-sm font-semibold text-slate-700">
+        <label
+          htmlFor="description"
+          className="text-sm font-semibold text-slate-700"
+        >
           Description
         </label>
         <textarea
@@ -251,6 +272,46 @@ export function NewEventForm({ action }: NewEventFormProps) {
           {uploadError}
         </p>
       )}
+
+      <div className="grid gap-2 rounded-xl border border-[#DCE2ED] bg-white p-3">
+        <p className="text-sm font-semibold text-slate-700">
+          Boissons de l&apos;événement (optionnel)
+        </p>
+        <p className="text-xs text-slate-500">
+          Sélectionne les boissons disponibles pour cet événement.
+        </p>
+        <div className="grid max-h-44 grid-cols-1 gap-2 overflow-y-auto rounded-lg border border-slate-100 p-2 sm:grid-cols-2">
+          {catalogDrinks.map((drink) => {
+            const checked = selectedDrinkIds.includes(drink.id);
+            return (
+              <label
+                key={drink.id}
+                className={`flex cursor-pointer items-center justify-between gap-2 rounded-md border px-2 py-1.5 text-sm ${
+                  checked
+                    ? "border-[#534AB7] bg-[#EEF0FF] text-[#3B3390]"
+                    : "border-slate-200 bg-white text-slate-700"
+                }`}
+              >
+                <span className="truncate">{drink.name}</span>
+                <span className="text-[0.65rem] font-semibold uppercase opacity-70">
+                  {drink.isAlcoholic ? "Alcool" : "Sans alcool"}
+                </span>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => toggleDrink(drink.id)}
+                  className="sr-only"
+                />
+              </label>
+            );
+          })}
+        </div>
+        <input
+          type="hidden"
+          name="selectedDrinkIds"
+          value={JSON.stringify(selectedDrinkIds)}
+        />
+      </div>
 
       <div className="pt-2">
         <SubmitButton disabled={Boolean(uploadingField)} />
