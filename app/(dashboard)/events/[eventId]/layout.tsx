@@ -26,6 +26,7 @@ export default async function EventLayout({ children, params }: LayoutProps) {
       {/* ── Sidebar ── */}
       <Sidebar
         eventId={event.id}
+        eventTitle={event.title}
         user={{
           name: user.name,
           email: user.email,

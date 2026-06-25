@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import EditLink from "./edit/link";
 
 export const dynamic = "force-dynamic";
 
@@ -161,6 +162,9 @@ export default async function EventDashboardPage({ params }: EventPageProps) {
             </p>
           </div>
         )}
+        <div className="mt-4">
+          <EditLink eventId={event.id} />
+        </div>
       </div>
     </div>
   );

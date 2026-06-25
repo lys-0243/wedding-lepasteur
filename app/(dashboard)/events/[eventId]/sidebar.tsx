@@ -20,6 +20,7 @@ type MenuItem = {
 
 type SidebarProps = {
   eventId: string;
+  eventTitle?: string | null;
   user: {
     name: string | null;
     email: string;
@@ -53,7 +54,7 @@ function buildMenu(eventId: string): MenuItem[] {
   ];
 }
 
-export function Sidebar({ eventId, user }: SidebarProps) {
+export function Sidebar({ eventId, user, eventTitle }: SidebarProps) {
   const pathname = usePathname();
   const menu = buildMenu(eventId);
 
@@ -65,9 +66,9 @@ export function Sidebar({ eventId, user }: SidebarProps) {
     .slice(0, 2);
 
   return (
-    <aside className="flex h-full w-64 shrink-0 flex-col border-r border-[#E8ECF4] bg-white">
+    <aside className="flex h-full w-72 shrink-0 flex-col border-r border-[#E8ECF4] bg-linear-to-b from-[#DDF4F2] via-[#EAEFF9] to-[#DCCBF4]">
       {/* Profile */}
-      <div className="flex flex-col items-center gap-2 border-b border-[#E8ECF4] px-6 py-7">
+      <div className="flex flex-col items-center gap-2 border-b border-[#ffffff] px-6 py-7">
         {user.avatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -76,11 +77,11 @@ export function Sidebar({ eventId, user }: SidebarProps) {
             className="h-16 w-16 rounded-full object-cover ring-2 ring-[#534AB7]/20 ring-offset-2"
           />
         ) : (
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#534AB7] to-[#AF8BFF] text-lg font-bold text-white ring-2 ring-[#534AB7]/20 ring-offset-2">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-linear-to-br from-[#534AB7] to-[#AF8BFF] text-lg font-bold text-white ring-2 ring-[#534AB7]/20 ring-offset-2">
             {initials}
           </div>
         )}
-        <div className="text-center">
+        <div className="text-center mb-6">
           {user.name && (
             <p className="text-sm font-semibold text-slate-800">{user.name}</p>
           )}
@@ -88,6 +89,31 @@ export function Sidebar({ eventId, user }: SidebarProps) {
             {user.email}
           </p>
         </div>
+        {eventTitle && (
+          <>
+            <div className=" px-3">
+              <p className="truncate text-sm font-semibold text-slate-800">
+                {eventTitle}
+              </p>
+            </div>
+            <div className=" px-3 bg-blue-700 rounded-full">
+              <Link
+                href={`/events/${eventId}/edit`}
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium text-white transition-all hover:font-bold"
+              >
+                Modifier l'événement
+              </Link>
+            </div>
+            <div className="mb-3">
+              <Link
+                href={`/`}
+                className="flex w-full items-center gap-3 rounded-xl px-3 underline py-2.5 text-xs font-medium text-blue-700 transition-all hover:font-bold"
+              >
+                Autres évenements
+              </Link>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Menu */}
@@ -104,7 +130,7 @@ export function Sidebar({ eventId, user }: SidebarProps) {
                   href={href}
                   className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
                     active
-                      ? "bg-[#EEF0FF] text-[#534AB7]"
+                      ? "bg-[#fff] text-[#534AB7]"
                       : "text-slate-600 hover:bg-slate-50 hover:text-slate-800"
                   }`}
                 >
@@ -126,7 +152,7 @@ export function Sidebar({ eventId, user }: SidebarProps) {
         </ul>
       </nav>
 
-      {/* Logout — fixe en bas */}
+      {/* Footer — edit link + Logout */}
       <div className="border-t border-[#E8ECF4] px-3 py-4">
         <form action={logoutAction}>
           <button
