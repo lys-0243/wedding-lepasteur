@@ -458,7 +458,7 @@ export default function InviteConfirmationPage({
             <Button
               onClick={() => void handleSaveAndDownload()}
               disabled={submitting}
-              className="bg-[#1E5FF5] hover:bg-[#6a8ee2] h-12 hover:cursor-pointer text-white"
+              className="bg-[#1E5FF5] hover:bg-[#6a8ee2] h-12 hover:cursor-pointer text-white rounded-full"
             >
               {submitting
                 ? "Enregistrement..."
