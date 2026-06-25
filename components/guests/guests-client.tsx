@@ -62,7 +62,11 @@ type Guest = {
 type Props = {
   eventId: string;
   initialGuests: Guest[];
-  event?: { title: string; eventDate: string | null };
+  event?: {
+    title: string;
+    eventDate: string | null;
+    startTime?: string | null;
+  };
 };
 
 const RSVP_LABELS: Record<string, string> = {
@@ -172,15 +176,16 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
           day: "2-digit",
           month: "long",
           year: "numeric",
-        }).format(new Date(event.eventDate))
+        }).format(new Date(event.eventDate)) +
+        (event?.startTime ? ` · ${event.startTime}` : "")
       : "";
 
     const eventTitle = event?.title || "l'événement";
 
     // Build richer WhatsApp message with event context
     const text = eventDateStr
-      ? `Bonjour ${guest.firstName}, tu es invité à ${eventTitle} (${eventDateStr}). Clique ici pour confirmer ta présence: ${inviteUrl}`
-      : `Bonjour ${guest.firstName}, tu es invité à ${eventTitle}. Clique ici pour confirmer ta présence: ${inviteUrl}`;
+      ? `Bonjour ${guest.firstName}, tu es invité au ${eventTitle} (${eventDateStr}). Clique ici pour confirmer ta présence: ${inviteUrl}`
+      : `Bonjour ${guest.firstName}, tu es invité au ${eventTitle}. Clique ici pour confirmer ta présence: ${inviteUrl}`;
 
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
 

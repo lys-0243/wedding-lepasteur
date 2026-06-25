@@ -27,7 +27,7 @@ export default async function NewEventPage() {
         <div className="rounded-3xl border border-[#DEE4EF] bg-[#F7F8FC] p-5 sm:p-6">
           <div className="mb-6 flex items-center justify-between gap-3">
             <h1 className="text-[1.45rem] font-semibold tracking-[-0.02em] text-slate-800 sm:text-[1.6rem]">
-              Creer un evenement
+              Créer un événement
             </h1>
             <Link
               href="/"

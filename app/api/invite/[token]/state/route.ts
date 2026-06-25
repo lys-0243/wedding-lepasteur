@@ -25,6 +25,7 @@ export async function GET(_req: Request, { params }: RouteContext) {
           title: true,
           slug: true,
           eventDate: true,
+          startTime: true,
           venue: true,
           profileImageUrl: true,
           coverImageUrl: true,
@@ -72,6 +73,7 @@ export async function GET(_req: Request, { params }: RouteContext) {
       event: {
         ...guest.event,
         eventDate: guest.event.eventDate?.toISOString() ?? null,
+        startTime: guest.event.startTime ?? null,
       },
     },
     drinks: eventDrinkLinks.map((row) => row.drink),
