@@ -19,22 +19,23 @@ model User {
 }
 
 model Event {
-  id              String       @id @default(cuid())
-  userId          String
-  title           String
-  slug            String       @unique
-  eventDate       DateTime?
-  venue           String?
-  description     String?
-  profileImageUrl String?
-  coverImageUrl   String?
-  status          EventStatus  @default(DRAFT)
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-  eventDrinks     EventDrink[]
-  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  guests          Guest[]
-  tables          Table[]
+  id                String       @id @default(cuid())
+  userId            String
+  title             String
+  slug              String       @unique
+  eventDate         DateTime?
+  venue             String?
+  description       String?
+  profileImageUrl   String?
+  coverImageUrl     String?
+  invitationFileUrl String?
+  status            EventStatus  @default(DRAFT)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  eventDrinks       EventDrink[]
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  guests            Guest[]
+  tables            Table[]
 }
 
 model Table {
