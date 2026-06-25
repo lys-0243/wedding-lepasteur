@@ -55,17 +55,11 @@ function formatDate(iso: string | null) {
   }).format(new Date(iso));
 }
 
-export default function InviteConfirmationPage({
-  params,
-}: {
-  params: Promise<{ token: string }>;
-}) {
-  const [token, setToken] = useState<string>("");
+export default function InviteConfirmationClient({ token }: { token: string }) {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [state, setState] = useState<InviteState | null>(null);
-
   const [rsvpStatus, setRsvpStatus] = useState<Rsvp>("PENDING");
   const [plusOneRsvpStatus, setPlusOneRsvpStatus] = useState<Rsvp>("PENDING");
   const [primaryDrinkId, setPrimaryDrinkId] = useState("");
@@ -75,10 +69,6 @@ export default function InviteConfirmationPage({
     let mounted = true;
 
     async function bootstrap() {
-      const resolved = await params;
-      if (!mounted) return;
-
-      setToken(resolved.token);
       setLoading(true);
       setError(null);
 
@@ -118,7 +108,7 @@ export default function InviteConfirmationPage({
     return () => {
       mounted = false;
     };
-  }, [params]);
+  }, [token]);
 
   const guestFullName = useMemo(() => {
     if (!state) return "";
@@ -133,14 +123,12 @@ export default function InviteConfirmationPage({
 
   async function handleSave() {
     if (!state || !primaryDrinkId) {
-      setError("Merci de sélectionner au moins la boisson à prendre.");
+      setError("Merci de sélectionner au moins la boisson principale.");
       return;
     }
 
     if (state.guest.invitationType === "COUPLE" && !plusOneDrinkId) {
-      setError(
-        "Merci de sélectionner la boisson pour celui/celle qui vous accomagne.",
-      );
+      setError("Merci de sélectionner la boisson de l'accompagnateur.");
       return;
     }
 
@@ -233,16 +221,16 @@ export default function InviteConfirmationPage({
 
   return (
     <main className="min-h-screen bg-[#F4F6FB] py-8 px-4">
-      <section className="mx-auto w-full max-w-2xl overflow-hidden rounded-4xl bg-white shadow-sm">
+      <section className="mx-auto w-full max-w-2xl overflow-hidden rounded-[2rem] bg-white shadow-sm">
         <div className="relative overflow-hidden">
           {state.guest.event.coverImageUrl ? (
-            <div className="relative h-56 w-full overflow-hidden rounded-b-4xl bg-slate-200">
+            <div className="relative h-56 w-full overflow-hidden rounded-b-[2rem] bg-slate-200">
               <img
                 src={state.guest.event.coverImageUrl}
                 alt={state.guest.event.title}
                 className="h-full w-full object-cover"
               />
-              <div className="absolute inset-0 bg-linear-to-t from-slate-950/60 via-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent" />
             </div>
           ) : (
             <div className="h-56 bg-slate-200" />
@@ -304,7 +292,7 @@ export default function InviteConfirmationPage({
 
           <div className="grid gap-4 rounded-3xl border border-[#E8ECF4] bg-slate-50 p-4 shadow-sm">
             <p className="text-sm font-semibold text-slate-700">
-              Quelle boisson préférez-vous ?
+              Boisson principale
             </p>
             <div className="grid gap-2 sm:grid-cols-2">
               {state.drinks.map((drink) => (

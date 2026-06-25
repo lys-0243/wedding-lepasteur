@@ -179,8 +179,8 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
 
     // Build richer WhatsApp message with event context
     const text = eventDateStr
-      ? `Bonjour ${guest.firstName}, tu es invité à ${eventTitle} (${eventDateStr}). Clique ici pour confirmer ta présence: ${inviteUrl}`
-      : `Bonjour ${guest.firstName}, tu es invité à ${eventTitle}. Clique ici pour confirmer ta présence: ${inviteUrl}`;
+      ? `Bonjour ${guest.firstName}, tu es invité au ${eventTitle} (${eventDateStr}). Clique ici pour confirmer ta présence: ${inviteUrl}`
+      : `Bonjour ${guest.firstName}, tu es invité au ${eventTitle}. Clique ici pour confirmer ta présence: ${inviteUrl}`;
 
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
 
