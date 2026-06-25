@@ -38,7 +38,8 @@
     "svix": "^1.95.2",
     "tailwind-merge": "^3.6.0",
     "xlsx": "^0.18.5",
-    "zod": "^4.4.3"
+    "zod": "^4.4.3",
+    "pdf-lib": "^1.17.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
