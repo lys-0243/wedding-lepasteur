@@ -72,7 +72,7 @@ function ImageUploadSlot({
             className="h-full w-full object-cover"
           />
           {/* Hover actions */}
-          <div className="absolute inset-0 flex items-end justify-between gap-2 p-2 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="absolute inset-0 flex items-end justify-between gap-2 p-2 bg-linear-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
             <button
               type="button"
               onClick={() => inputRef.current?.click()}
@@ -212,22 +212,32 @@ export function NewEventForm({ action, catalogDrinks }: NewEventFormProps) {
             className="h-10 w-full rounded-lg border border-[#DCE2ED] bg-white px-3 text-sm text-slate-700 outline-none transition-colors focus:border-[#B7C4E0]"
           />
         </div>
-
         <div className="grid gap-1.5">
           <label
-            htmlFor="venue"
+            htmlFor="startTime"
             className="text-sm font-semibold text-slate-700"
           >
-            Lieu
+            Heure de début
           </label>
           <input
-            id="venue"
-            name="venue"
-            type="text"
-            placeholder="Ex: Domaine des Oliviers"
-            className="h-10 w-full rounded-lg border border-[#DCE2ED] bg-white px-3 text-sm text-slate-700 outline-none transition-colors placeholder:text-slate-400 focus:border-[#B7C4E0]"
+            id="startTime"
+            name="startTime"
+            type="time"
+            className="h-10 w-full rounded-lg border border-[#DCE2ED] bg-white px-3 text-sm text-slate-700 outline-none transition-colors focus:border-[#B7C4E0]"
           />
         </div>
+      </div>
+      <div className="grid gap-1.5">
+        <label htmlFor="venue" className="text-sm font-semibold text-slate-700">
+          Lieu (Adresse)
+        </label>
+        <input
+          id="venue"
+          name="venue"
+          type="text"
+          placeholder="Ex: Domaine des Oliviers"
+          className="h-10 w-full rounded-lg border border-[#DCE2ED] bg-white px-3 text-sm text-slate-700 outline-none transition-colors placeholder:text-slate-400 focus:border-[#B7C4E0]"
+        />
       </div>
 
       <div className="grid gap-1.5">
@@ -272,46 +282,6 @@ export function NewEventForm({ action, catalogDrinks }: NewEventFormProps) {
           {uploadError}
         </p>
       )}
-
-      <div className="grid gap-2 rounded-xl border border-[#DCE2ED] bg-white p-3">
-        <p className="text-sm font-semibold text-slate-700">
-          Boissons de l&apos;événement (optionnel)
-        </p>
-        <p className="text-xs text-slate-500">
-          Sélectionne les boissons disponibles pour cet événement.
-        </p>
-        <div className="grid max-h-44 grid-cols-1 gap-2 overflow-y-auto rounded-lg border border-slate-100 p-2 sm:grid-cols-2">
-          {catalogDrinks.map((drink) => {
-            const checked = selectedDrinkIds.includes(drink.id);
-            return (
-              <label
-                key={drink.id}
-                className={`flex cursor-pointer items-center justify-between gap-2 rounded-md border px-2 py-1.5 text-sm ${
-                  checked
-                    ? "border-[#534AB7] bg-[#EEF0FF] text-[#3B3390]"
-                    : "border-slate-200 bg-white text-slate-700"
-                }`}
-              >
-                <span className="truncate">{drink.name}</span>
-                <span className="text-[0.65rem] font-semibold uppercase opacity-70">
-                  {drink.isAlcoholic ? "Alcool" : "Sans alcool"}
-                </span>
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={() => toggleDrink(drink.id)}
-                  className="sr-only"
-                />
-              </label>
-            );
-          })}
-        </div>
-        <input
-          type="hidden"
-          name="selectedDrinkIds"
-          value={JSON.stringify(selectedDrinkIds)}
-        />
-      </div>
 
       <div className="pt-2">
         <SubmitButton disabled={Boolean(uploadingField)} />

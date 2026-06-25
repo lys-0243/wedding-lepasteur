@@ -24,6 +24,7 @@ model Event {
   title             String
   slug              String       @unique
   eventDate         DateTime?
+  startTime         String?
   venue             String?
   description       String?
   profileImageUrl   String?

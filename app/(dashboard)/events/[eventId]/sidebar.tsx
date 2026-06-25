@@ -96,12 +96,20 @@ export function Sidebar({ eventId, user, eventTitle }: SidebarProps) {
                 {eventTitle}
               </p>
             </div>
-            <div className="mb-3 px-3 bg-blue-700 rounded-full">
+            <div className=" px-3 bg-blue-700 rounded-full">
               <Link
                 href={`/events/${eventId}/edit`}
                 className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium text-white transition-all hover:font-bold"
               >
                 Modifier l'événement
+              </Link>
+            </div>
+            <div className="mb-3">
+              <Link
+                href={`/`}
+                className="flex w-full items-center gap-3 rounded-xl px-3 underline py-2.5 text-xs font-medium text-blue-700 transition-all hover:font-bold"
+              >
+                Autres évenements
               </Link>
             </div>
           </>

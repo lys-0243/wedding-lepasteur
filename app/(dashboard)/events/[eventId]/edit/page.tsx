@@ -65,7 +65,6 @@ export default async function EditEventPage({ params }: { params: any }) {
             </h1>
           </div>
 
-          {/* @ts-expect-error Server Component passing action to client component */}
           <EditEventForm
             action={updateEventAction}
             catalogDrinks={catalogDrinks}

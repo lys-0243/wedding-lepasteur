@@ -77,6 +77,7 @@ export async function updateEventAction(formData: FormData) {
     data: {
       title,
       eventDate: asOptionalDate(formData.get("eventDate")),
+      startTime: asOptionalText(formData.get("startTime")),
       venue: asOptionalText(formData.get("venue")),
       description: asOptionalText(formData.get("description")),
       profileImageUrl: asOptionalText(formData.get("profileImageUrl")),

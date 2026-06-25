@@ -10,6 +10,7 @@ type InitialValues = {
   id: string;
   title: string;
   eventDate?: string | null;
+  startTime?: string | null;
   venue?: string | null;
   description?: string | null;
   profileImageUrl?: string | null;
@@ -83,7 +84,7 @@ function ImageUploadSlot({
             alt={`Aperçu ${label}`}
             className="h-full w-full object-cover"
           />
-          <div className="absolute inset-0 flex items-end justify-between gap-2 p-2 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="absolute inset-0 flex items-end justify-between gap-2 p-2 bg-linear-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
             <button
               type="button"
               onClick={() => inputRef.current?.click()}
@@ -329,23 +330,34 @@ export function EditEventForm({
             className="h-10 w-full rounded-lg border border-[#DCE2ED] bg-white px-3 text-sm text-slate-700 outline-none transition-colors focus:border-[#B7C4E0]"
           />
         </div>
-
         <div className="grid gap-1.5">
           <label
-            htmlFor="venue"
+            htmlFor="startTime"
             className="text-sm font-semibold text-slate-700"
           >
-            Lieu
+            Heure de début
           </label>
           <input
-            id="venue"
-            name="venue"
-            type="text"
-            defaultValue={initial.venue ?? ""}
-            placeholder="Ex: Domaine des Oliviers"
-            className="h-10 w-full rounded-lg border border-[#DCE2ED] bg-white px-3 text-sm text-slate-700 outline-none transition-colors placeholder:text-slate-400 focus:border-[#B7C4E0]"
+            id="startTime"
+            name="startTime"
+            type="time"
+            defaultValue={initial.startTime ?? undefined}
+            className="h-10 w-full rounded-lg border border-[#DCE2ED] bg-white px-3 text-sm text-slate-700 outline-none transition-colors focus:border-[#B7C4E0]"
           />
         </div>
+      </div>
+      <div className="grid gap-1.5">
+        <label htmlFor="venue" className="text-sm font-semibold text-slate-700">
+          Lieu
+        </label>
+        <input
+          id="venue"
+          name="venue"
+          type="text"
+          defaultValue={initial.venue ?? ""}
+          placeholder="Ex: Domaine des Oliviers"
+          className="h-10 w-full rounded-lg border border-[#DCE2ED] bg-white px-3 text-sm text-slate-700 outline-none transition-colors placeholder:text-slate-400 focus:border-[#B7C4E0]"
+        />
       </div>
 
       <div className="grid gap-1.5">
