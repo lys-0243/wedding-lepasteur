@@ -178,6 +178,32 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
     plusOneLastName: "",
   });
 
+  const [downloadingAll, setDownloadingAll] = useState(false);
+
+  async function handleDownloadAllInvitations() {
+    const guests = table.guests;
+    if (guests.length === 0) {
+      toast.error("Aucun invité dans cette table.");
+      return;
+    }
+
+    setDownloadingAll(true);
+    try {
+      for (const guest of guests) {
+        window.open(
+          `/api/events/${eventId}/guests/${guest.id}/download-invitation`,
+          "_blank",
+        );
+        await new Promise((r) => setTimeout(r, 400));
+      }
+      toast.success(`${guests.length} invitation(s) générée(s).`);
+    } catch {
+      toast.error("Erreur lors de la génération des invitations.");
+    } finally {
+      setDownloadingAll(false);
+    }
+  }
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function handleExportGuests() {
@@ -689,6 +715,22 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
           >
             <Upload className="h-4 w-4" />
             Importer Excel
+          </Button>
+
+          {/* Download all invitations */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void handleDownloadAllInvitations()}
+            disabled={downloadingAll}
+            className="gap-2 border-[#E8ECF4] text-slate-600 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-200 cursor-pointer h-10 px-4 rounded-xl disabled:opacity-40"
+          >
+            {downloadingAll ? (
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            Télécharger les invitations
           </Button>
 
           {/* Export Excel */}

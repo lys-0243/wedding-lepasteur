@@ -168,7 +168,7 @@ async function generateAndDownloadInvitation(
   });
 
   const pdfBytes = await pdfDoc.save();
-  const blob = new Blob([pdfBytes], { type: "application/pdf" });
+  const blob = new Blob([pdfBytes as BlobPart], { type: "application/pdf" });
   const blobUrl = URL.createObjectURL(blob);
   const link = document.createElement("a");
 
