@@ -19,9 +19,7 @@ function toUint8Array(input: Uint8Array | ArrayBuffer): Uint8Array {
     : new Uint8Array(input as ArrayBuffer);
 }
 
-async function loadInvitationFile(
-  url: string,
-): Promise<Uint8Array | null> {
+async function loadInvitationFile(url: string): Promise<Uint8Array | null> {
   try {
     if (url.startsWith("/invitations/")) {
       const filePath = path.join(process.cwd(), "public", url);
@@ -39,51 +37,11 @@ async function loadInvitationFile(
 type Placeholder = {
   pageIndex: number;
   type: "NOM" | "TABLE";
-  x: number;
+  x?: number;
   y: number;
   fontSize: number;
+  align?: "left" | "center";
 };
-
-async function findPlaceholders(
-  buffer: Uint8Array,
-): Promise<{ doc: PDFDocument; placeholders: Placeholder[] }> {
-  const pdfjsLib = await import("pdfjs-dist");
-  const pdf = await pdfjsLib.getDocument({
-    data: buffer.slice(0),
-  }).promise;
-
-  const placeholders: Placeholder[] = [];
-
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const textContent = await page.getTextContent();
-
-    for (const item of textContent.items) {
-      const data = item as any;
-      const str = data.str?.trim()?.toUpperCase();
-      if (str !== "NOM" && str !== "TABLE") continue;
-
-      const [, , , , e, f] = data.transform;
-      const fontSize =
-        typeof data.height === "number" && data.height > 0
-          ? data.height
-          : Math.abs(data.transform[0]);
-
-      placeholders.push({
-        pageIndex: i - 1,
-        type: str as "NOM" | "TABLE",
-        x: e,
-        y: f,
-        fontSize,
-      });
-    }
-  }
-
-  try { (pdf as any).destroy?.(); } catch {} // eslint-disable-line
-
-  const pdfDoc = await PDFDocument.load(buffer);
-  return { doc: pdfDoc, placeholders };
-}
 
 async function replacePlaceholders(
   pdfDoc: PDFDocument,
@@ -100,8 +58,13 @@ async function replacePlaceholders(
     const value = ph.type === "NOM" ? guestName : (tableName ?? "");
     if (!value) continue;
 
+    const drawX =
+      ph.align === "center"
+        ? Math.max(0, (A4_WIDTH - font.widthOfTextAtSize(value, ph.fontSize)) / 2)
+        : (ph.x ?? 0);
+
     page.drawText(value, {
-      x: ph.x,
+      x: drawX,
       y: ph.y,
       size: ph.fontSize,
       font,
@@ -217,10 +180,7 @@ export async function GET(_req: Request, { params }: RouteContext) {
   }
 
   if (event.userId !== user.id) {
-    return NextResponse.json(
-      { error: "Non autorisé." },
-      { status: 403 },
-    );
+    return NextResponse.json({ error: "Non autorisé." }, { status: 403 });
   }
 
   const guest = await prisma.guest.findUnique({
@@ -239,16 +199,14 @@ export async function GET(_req: Request, { params }: RouteContext) {
   });
 
   if (!guest || guest.event === null) {
-    return NextResponse.json(
-      { error: "Invité introuvable." },
-      { status: 404 },
-    );
+    return NextResponse.json({ error: "Invité introuvable." }, { status: 404 });
   }
 
   const checkinUrl = `${new URL(_req.url).origin}/api/events/${eventId}/checkin?token=${guest.token}`;
-  const displayName = guest.invitationType === "COUPLE"
-    ? `Couple ${guest.firstName} ${guest.lastName}`.trim()
-    : `${guest.firstName} ${guest.lastName}`.trim();
+  const displayName =
+    guest.invitationType === "COUPLE"
+      ? `Couple ${guest.firstName} ${guest.lastName}`.trim()
+      : `${guest.firstName} ${guest.lastName}`.trim();
   const guestName = `${guest.firstName} ${guest.lastName}`.trim();
   const tableName = guest.table?.name ?? null;
 
@@ -266,13 +224,15 @@ export async function GET(_req: Request, { params }: RouteContext) {
         let modifiedBuffer = invitationBuffer;
 
         try {
-          const { doc, placeholders } = await findPlaceholders(invitationBuffer);
-          if (placeholders.length > 0) {
-            await replacePlaceholders(doc, placeholders, displayName, tableName);
-            modifiedBuffer = toUint8Array(await doc.save());
-          }
+          const doc = await PDFDocument.load(invitationBuffer);
+          const placeholders: Placeholder[] = [
+            { pageIndex: 1, type: "NOM" as const, y: 577, fontSize: 30, align: "center" },
+            { pageIndex: 1, type: "TABLE" as const, x: 258, y: 378, fontSize: 30 },
+          ];
+          await replacePlaceholders(doc, placeholders, displayName, tableName);
+          modifiedBuffer = toUint8Array(await doc.save());
         } catch {
-          // pdfjs-dist failed; proceed with original buffer
+          // pdf-lib failed; proceed with original buffer
         }
 
         const invitationDoc = await PDFDocument.load(modifiedBuffer);
@@ -292,7 +252,10 @@ export async function GET(_req: Request, { params }: RouteContext) {
           } catch {
             embedded = await imgPdf.embedPng(invitationBuffer);
           }
-          const { width, height } = embedded.scaleToFit(A4_WIDTH - 64, A4_HEIGHT - 64);
+          const { width, height } = embedded.scaleToFit(
+            A4_WIDTH - 64,
+            A4_HEIGHT - 64,
+          );
           imgPage.drawImage(embedded, {
             x: 32,
             y: A4_HEIGHT - height - 32,

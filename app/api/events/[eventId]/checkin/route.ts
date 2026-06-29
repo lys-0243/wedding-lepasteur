@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 
 type RouteContext = { params: Promise<{ eventId: string }> };
 
-export async function GET(_req: Request, { params }: RouteContext) {
+export async function GET(_req: NextRequest, { params }: RouteContext) {
   const user = await requireUser();
   const { eventId } = await params;
 
@@ -12,10 +12,7 @@ export async function GET(_req: Request, { params }: RouteContext) {
   const token = searchParams.get("token");
 
   if (!token) {
-    return new Response(
-      "<html><body><p style='font-family:sans-serif;padding:2rem;color:red;'>Token manquant.</p></body></html>",
-      { status: 400, headers: { "Content-Type": "text/html; charset=utf-8" } },
-    );
+    return NextResponse.json({ error: "Token manquant." }, { status: 400 });
   }
 
   const event = await prisma.event.findUnique({
@@ -23,31 +20,34 @@ export async function GET(_req: Request, { params }: RouteContext) {
     select: { userId: true, title: true },
   });
 
-  if (!event) {
-    return new Response(
-      "<html><body><p style='font-family:sans-serif;padding:2rem;color:red;'>Événement introuvable.</p></body></html>",
-      { status: 404, headers: { "Content-Type": "text/html; charset=utf-8" } },
-    );
-  }
-
-  if (event.userId !== user.id) {
-    return new Response(
-      "<html><body><p style='font-family:sans-serif;padding:2rem;color:red;'>Non autorisé.</p></body></html>",
-      { status: 403, headers: { "Content-Type": "text/html; charset=utf-8" } },
-    );
+  if (!event || event.userId !== user.id) {
+    return NextResponse.json({ error: "Non autorisé." }, { status: 403 });
   }
 
   const guest = await prisma.guest.findUnique({
     where: { token },
-    select: { id: true, firstName: true, lastName: true, checkedInAt: true, eventId: true },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      checkedInAt: true,
+      eventId: true,
+      invitationType: true,
+      table: { select: { name: true } },
+    },
   });
 
   if (!guest || guest.eventId !== eventId) {
-    return new Response(
-      "<html><body><p style='font-family:sans-serif;padding:2rem;color:red;'>Invité introuvable pour cet événement.</p></body></html>",
-      { status: 404, headers: { "Content-Type": "text/html; charset=utf-8" } },
+    return NextResponse.json(
+      { error: "Invité introuvable pour cet événement." },
+      { status: 404 },
     );
   }
+
+  const displayName =
+    guest.invitationType === "COUPLE"
+      ? `Couple ${guest.firstName} ${guest.lastName}`.trim()
+      : `${guest.firstName} ${guest.lastName}`.trim();
 
   const now = new Date();
   await prisma.guest.update({
@@ -55,7 +55,6 @@ export async function GET(_req: Request, { params }: RouteContext) {
     data: { checkedInAt: now },
   });
 
-  const guestName = `${guest.firstName} ${guest.lastName}`.trim();
   const timeStr = now.toLocaleTimeString("fr-FR", {
     hour: "2-digit",
     minute: "2-digit",
@@ -109,7 +108,7 @@ export async function GET(_req: Request, { params }: RouteContext) {
   <div class="card">
     <div class="icon">✓</div>
     <h1>Présence confirmée</h1>
-    <p><span class="name">${guestName}</span> est bien arrivé à <strong>${event.title}</strong>.</p>
+    <p><span class="name">${displayName}</span> est bien arrivé à <strong>${event.title}</strong>.</p>
     <p class="time">Enregistré à ${timeStr}</p>
   </div>
 </body>
@@ -118,5 +117,65 @@ export async function GET(_req: Request, { params }: RouteContext) {
   return new Response(html, {
     status: 200,
     headers: { "Content-Type": "text/html; charset=utf-8" },
+  });
+}
+
+export async function POST(req: NextRequest, { params }: RouteContext) {
+  const user = await requireUser();
+  const { eventId } = await params;
+
+  const { token } = (await req.json()) as { token?: string };
+
+  if (!token) {
+    return NextResponse.json({ error: "Token manquant." }, { status: 400 });
+  }
+
+  const event = await prisma.event.findUnique({
+    where: { id: eventId },
+    select: { userId: true },
+  });
+
+  if (!event || event.userId !== user.id) {
+    return NextResponse.json({ error: "Non autorisé." }, { status: 403 });
+  }
+
+  const guest = await prisma.guest.findUnique({
+    where: { token },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      invitationType: true,
+      checkedInAt: true,
+      eventId: true,
+      table: { select: { name: true } },
+    },
+  });
+
+  if (!guest || guest.eventId !== eventId) {
+    return NextResponse.json(
+      { error: "Invité introuvable pour cet événement." },
+      { status: 404 },
+    );
+  }
+
+  const now = new Date();
+  await prisma.guest.update({
+    where: { id: guest.id },
+    data: { checkedInAt: now },
+  });
+
+  const displayName =
+    guest.invitationType === "COUPLE"
+      ? `Couple ${guest.firstName} ${guest.lastName}`.trim()
+      : `${guest.firstName} ${guest.lastName}`.trim();
+
+  return NextResponse.json({
+    success: true,
+    guest: {
+      name: displayName,
+      tableName: guest.table?.name ?? null,
+      checkedInAt: now.toISOString(),
+    },
   });
 }
