@@ -3,6 +3,8 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
+import { unlink } from "fs/promises";
+import path from "path";
 
 function asOptionalText(value: FormDataEntryValue | null) {
   if (typeof value !== "string") {
@@ -34,7 +36,7 @@ export async function updateEventAction(formData: FormData) {
 
   const existing = await prisma.event.findUnique({
     where: { id: eventId },
-    select: { id: true, userId: true },
+    select: { id: true, userId: true, invitationFileUrl: true },
   });
 
   if (!existing) {
@@ -72,6 +74,10 @@ export async function updateEventAction(formData: FormData) {
 
   const distinctSelectedDrinkIds = [...new Set(selectedDrinkIds)];
 
+  const newInvitationFileUrl = asOptionalText(
+    formData.get("invitationFileUrl"),
+  );
+
   await prisma.event.update({
     where: { id: eventId },
     data: {
@@ -82,7 +88,7 @@ export async function updateEventAction(formData: FormData) {
       description: asOptionalText(formData.get("description")),
       profileImageUrl: asOptionalText(formData.get("profileImageUrl")),
       coverImageUrl: asOptionalText(formData.get("coverImageUrl")),
-      invitationFileUrl: asOptionalText(formData.get("invitationFileUrl")),
+      invitationFileUrl: newInvitationFileUrl,
       eventDrinks:
         distinctSelectedDrinkIds.length > 0
           ? {
@@ -95,6 +101,12 @@ export async function updateEventAction(formData: FormData) {
           : { deleteMany: {} },
     },
   });
+
+  const oldUrl = existing.invitationFileUrl;
+  if (oldUrl && oldUrl.startsWith("/invitations/") && oldUrl !== newInvitationFileUrl) {
+    const filePath = path.join(process.cwd(), "public", oldUrl);
+    await unlink(filePath).catch(() => {});
+  }
 
   redirect(`/events/${eventId}`);
 }

@@ -250,9 +250,8 @@ export function EditEventForm({
       formData.append("upload_preset", UPLOAD_PRESET);
       formData.append("folder", FOLDER);
 
-      // Use auto endpoint to accept images and pdfs
       const res = await fetch(
-        `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`,
+        `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
         { method: "POST", body: formData },
       );
 
@@ -266,6 +265,39 @@ export function EditEventForm({
       }
 
       setter(data.secure_url);
+    } catch (err) {
+      setUploadError(
+        err instanceof Error ? err.message : "Erreur lors de l'upload.",
+      );
+    } finally {
+      setUploadingField(null);
+    }
+  };
+
+  const uploadInvitationFile = async (file: File) => {
+    setUploadError(null);
+    setUploadingField("invitationFileUrl");
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("eventId", initial.id);
+
+      const res = await fetch("/api/upload/invitation", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = (await res.json()) as {
+        url?: string;
+        error?: string;
+      };
+
+      if (!res.ok || !data.url) {
+        throw new Error(data.error ?? "Échec de l'upload.");
+      }
+
+      setInvitationFileUrl(data.url);
     } catch (err) {
       setUploadError(
         err instanceof Error ? err.message : "Erreur lors de l'upload.",
@@ -289,7 +321,7 @@ export function EditEventForm({
 
   const handleInvitationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) void uploadFile(file, setInvitationFileUrl, "invitationFileUrl");
+    if (file) void uploadInvitationFile(file);
     e.target.value = "";
   };
 

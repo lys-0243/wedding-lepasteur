@@ -21,7 +21,7 @@ export function GuestName({
 }: GuestNameProps) {
   const displayName =
     invitationType === "COUPLE"
-      ? `Couple ${firstName} & ${plusOneFirstName ?? ""} ${lastName || ""}`.trim()
+      ? `Couple ${firstName} ${lastName}`.trim()
       : `${firstName} ${lastName}`;
 
   return <span className={className}>{displayName}</span>;
