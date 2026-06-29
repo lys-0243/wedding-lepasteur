@@ -63,6 +63,7 @@ model Guest {
   plusOneFirstName  String?
   plusOneLastName   String?
   rsvpStatus        RsvpStatus     @default(PENDING)
+  checkedInAt       DateTime?
   rsvpMessage       String?
   respondedAt       DateTime?
   plusOneRsvpStatus RsvpStatus?

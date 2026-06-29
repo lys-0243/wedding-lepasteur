@@ -884,6 +884,18 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
                       >
                         <Share2 className="h-3.5 w-3.5" />
                       </button>
+                      <button
+                        onClick={() =>
+                          window.open(
+                            `/api/events/${eventId}/guests/${guest.id}/download-invitation`,
+                            "_blank",
+                          )
+                        }
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-purple-50 hover:text-purple-600"
+                        title="Télécharger l'invitation avec QR code"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                      </button>
                     </>
                   ) : (
                     <div

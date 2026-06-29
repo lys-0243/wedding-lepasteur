@@ -40,6 +40,7 @@ import { Label } from "@/components/ui/label";
 
 type GuestRow = {
   id: string;
+  token: string;
   firstName: string;
   lastName: string;
   email: string | null;
@@ -824,6 +825,18 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
 
                   {/* Actions */}
                   <div className="flex items-center justify-center gap-1">
+                    <button
+                      onClick={() =>
+                        window.open(
+                          `/api/events/${eventId}/guests/${guest.id}/download-invitation`,
+                          "_blank",
+                        )
+                      }
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-purple-50 hover:text-purple-600"
+                      title="Télécharger l'invitation avec QR code"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                    </button>
                     <button
                       onClick={() => setViewGuest(guest)}
                       className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-[#EEF0FF] hover:text-[#1E5FF5]"

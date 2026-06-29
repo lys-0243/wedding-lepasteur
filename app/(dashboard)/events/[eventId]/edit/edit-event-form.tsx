@@ -191,13 +191,15 @@ function FileUploadSlot({
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={uploading}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[#B7C4E0] bg-white py-7 text-slate-400 transition-all hover:border-[#534AB7] hover:text-[#534AB7] hover:bg-[#EEF3FF] cursor-pointer disabled:opacity-60"
+          className=" px-6 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[#B7C4E0] bg-white py-7 text-slate-400 transition-all hover:border-[#534AB7] hover:text-[#534AB7] hover:bg-[#EEF3FF] cursor-pointer disabled:opacity-60"
         >
           {uploading ? (
             <Loader2 className="h-5 w-5 animate-spin text-[#534AB7]" />
           ) : (
             <span className="text-xs font-semibold">
-              Ajouter un fichier d'invitation
+              Ajouter un fichier d'invitation, votre design doit mentionner une
+              mention "NOM" et "TABLE" pour que nous puissions personnaliser les
+              invitations.
             </span>
           )}
         </button>
