@@ -2,7 +2,28 @@
 
 import { useState, useRef, useTransition, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, Plus, Upload, Pencil, Trash2, Users, FileSpreadsheet, X, AlertTriangle, Link2Off, Download, Eye, Mail, Phone, Calendar, Heart, Armchair, Clock, UserCheck, UserX } from "lucide-react";
+import {
+  ArrowLeft,
+  Plus,
+  Upload,
+  Pencil,
+  Trash2,
+  Users,
+  FileSpreadsheet,
+  X,
+  AlertTriangle,
+  Link2Off,
+  Download,
+  Eye,
+  Mail,
+  Phone,
+  Calendar,
+  Heart,
+  Armchair,
+  Clock,
+  UserCheck,
+  UserX,
+} from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
@@ -19,6 +40,7 @@ import { Label } from "@/components/ui/label";
 
 type GuestRow = {
   id: string;
+  token: string;
   firstName: string;
   lastName: string;
   email: string | null;
@@ -89,7 +111,9 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [invitationType, setInvitationType] = useState<"SINGLE" | "COUPLE">("SINGLE");
+  const [invitationType, setInvitationType] = useState<"SINGLE" | "COUPLE">(
+    "SINGLE",
+  );
   const [plusOneFirstName, setPlusOneFirstName] = useState("");
   const [plusOneLastName, setPlusOneLastName] = useState("");
   const [createLoading, setCreateLoading] = useState(false);
@@ -124,7 +148,9 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
   const [editLastName, setEditLastName] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editPhone, setEditPhone] = useState("");
-  const [editInvitationType, setEditInvitationType] = useState<"SINGLE" | "COUPLE">("SINGLE");
+  const [editInvitationType, setEditInvitationType] = useState<
+    "SINGLE" | "COUPLE"
+  >("SINGLE");
   const [editPlusOneFirstName, setEditPlusOneFirstName] = useState("");
   const [editPlusOneLastName, setEditPlusOneLastName] = useState("");
   const [editLoading, setEditLoading] = useState(false);
@@ -152,6 +178,32 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
     plusOneLastName: "",
   });
 
+  const [downloadingAll, setDownloadingAll] = useState(false);
+
+  async function handleDownloadAllInvitations() {
+    const guests = table.guests;
+    if (guests.length === 0) {
+      toast.error("Aucun invité dans cette table.");
+      return;
+    }
+
+    setDownloadingAll(true);
+    try {
+      for (const guest of guests) {
+        window.open(
+          `/api/events/${eventId}/guests/${guest.id}/download-invitation`,
+          "_blank",
+        );
+        await new Promise((r) => setTimeout(r, 400));
+      }
+      toast.success(`${guests.length} invitation(s) générée(s).`);
+    } catch {
+      toast.error("Erreur lors de la génération des invitations.");
+    } finally {
+      setDownloadingAll(false);
+    }
+  }
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function handleExportGuests() {
@@ -162,11 +214,12 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
         if (g.rsvpStatus === "DECLINED") rsvpLabel = "Décliné";
 
         return {
-          "Prénom": g.firstName,
-          "Nom": g.lastName,
-          "Email": g.email || "",
-          "Téléphone": g.phone || "",
-          "Type d'invitation": g.invitationType === "COUPLE" ? "Couple" : "Seul",
+          Prénom: g.firstName,
+          Nom: g.lastName,
+          Email: g.email || "",
+          Téléphone: g.phone || "",
+          "Type d'invitation":
+            g.invitationType === "COUPLE" ? "Couple" : "Seul",
           "Accompagnateur Prénom": g.plusOneFirstName || "",
           "Accompagnateur Nom": g.plusOneLastName || "",
           "Statut RSVP": rsvpLabel,
@@ -191,7 +244,9 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
       const updated = allTables.find((t: any) => t.id === table.id);
       if (updated) {
         // Fetch detailed guests
-        const gRes = await fetch(`/api/events/${eventId}/tables/${table.id}/guests`);
+        const gRes = await fetch(
+          `/api/events/${eventId}/tables/${table.id}/guests`,
+        );
         if (gRes.ok) {
           const guests = await gRes.json();
           setTable({ ...updated, guests });
@@ -205,19 +260,23 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
     e.preventDefault();
     setCreateLoading(true);
     try {
-      const res = await fetch(`/api/events/${eventId}/tables/${table.id}/guests`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          firstName,
-          lastName,
-          email,
-          phone,
-          invitationType,
-          plusOneFirstName: invitationType === "COUPLE" ? plusOneFirstName : "",
-          plusOneLastName: invitationType === "COUPLE" ? plusOneLastName : "",
-        }),
-      });
+      const res = await fetch(
+        `/api/events/${eventId}/tables/${table.id}/guests`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            firstName,
+            lastName,
+            email,
+            phone,
+            invitationType,
+            plusOneFirstName:
+              invitationType === "COUPLE" ? plusOneFirstName : "",
+            plusOneLastName: invitationType === "COUPLE" ? plusOneLastName : "",
+          }),
+        },
+      );
       const data = await res.json();
       if (!res.ok) {
         toast.error(data.error ?? "Erreur lors de l'ajout.");
@@ -225,7 +284,9 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
       }
       setTable((prev) => ({
         ...prev,
-        guests: [...prev.guests, data].sort((a, b) => a.lastName.localeCompare(b.lastName)),
+        guests: [...prev.guests, data].sort((a, b) =>
+          a.lastName.localeCompare(b.lastName),
+        ),
       }));
       setCreateOpen(false);
       resetCreateForm();
@@ -243,11 +304,14 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
     }
     setCreateLoading(true);
     try {
-      const res = await fetch(`/api/events/${eventId}/tables/${table.id}/guests`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ guestId: selectedGuestId }),
-      });
+      const res = await fetch(
+        `/api/events/${eventId}/tables/${table.id}/guests`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ guestId: selectedGuestId }),
+        },
+      );
       const data = await res.json();
       if (!res.ok) {
         toast.error(data.error ?? "Erreur lors de l'assignation.");
@@ -255,11 +319,15 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
       }
       setTable((prev) => ({
         ...prev,
-        guests: [...prev.guests, data].sort((a, b) => a.lastName.localeCompare(b.lastName)),
+        guests: [...prev.guests, data].sort((a, b) =>
+          a.lastName.localeCompare(b.lastName),
+        ),
       }));
       setCreateOpen(false);
       setSelectedGuestId("");
-      toast.success(`${data.firstName} ${data.lastName} a été ajouté à la table.`);
+      toast.success(
+        `${data.firstName} ${data.lastName} a été ajouté à la table.`,
+      );
     } finally {
       setCreateLoading(false);
     }
@@ -280,19 +348,24 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
     if (!editGuest) return;
     setEditLoading(true);
     try {
-      const res = await fetch(`/api/events/${eventId}/tables/${table.id}/guests/${editGuest.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          firstName: editFirstName,
-          lastName: editLastName,
-          email: editEmail,
-          phone: editPhone,
-          invitationType: editInvitationType,
-          plusOneFirstName: editInvitationType === "COUPLE" ? editPlusOneFirstName : "",
-          plusOneLastName: editInvitationType === "COUPLE" ? editPlusOneLastName : "",
-        }),
-      });
+      const res = await fetch(
+        `/api/events/${eventId}/tables/${table.id}/guests/${editGuest.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            firstName: editFirstName,
+            lastName: editLastName,
+            email: editEmail,
+            phone: editPhone,
+            invitationType: editInvitationType,
+            plusOneFirstName:
+              editInvitationType === "COUPLE" ? editPlusOneFirstName : "",
+            plusOneLastName:
+              editInvitationType === "COUPLE" ? editPlusOneLastName : "",
+          }),
+        },
+      );
       const data = await res.json();
       if (!res.ok) {
         toast.error(data.error ?? "Erreur lors de la modification.");
@@ -300,7 +373,9 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
       }
       setTable((prev) => ({
         ...prev,
-        guests: prev.guests.map((g) => (g.id === data.id ? data : g)).sort((a, b) => a.lastName.localeCompare(b.lastName)),
+        guests: prev.guests
+          .map((g) => (g.id === data.id ? data : g))
+          .sort((a, b) => a.lastName.localeCompare(b.lastName)),
       }));
       setEditGuest(null);
       toast.success("Informations de l'invité mises à jour.");
@@ -313,9 +388,12 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
     if (!deleteGuest) return;
     setDeleteLoading(true);
     try {
-      const res = await fetch(`/api/events/${eventId}/tables/${table.id}/guests/${deleteGuest.id}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(
+        `/api/events/${eventId}/tables/${table.id}/guests/${deleteGuest.id}`,
+        {
+          method: "DELETE",
+        },
+      );
       if (!res.ok) {
         toast.error("Erreur lors de la suppression.");
         return;
@@ -324,7 +402,9 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
         ...prev,
         guests: prev.guests.filter((g) => g.id !== deleteGuest.id),
       }));
-      toast.success(`${deleteGuest.firstName} ${deleteGuest.lastName} a été supprimé.`);
+      toast.success(
+        `${deleteGuest.firstName} ${deleteGuest.lastName} a été supprimé.`,
+      );
       setDeleteGuest(null);
     } finally {
       setDeleteLoading(false);
@@ -335,11 +415,14 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
     if (!unassignGuest) return;
     setUnassignLoading(true);
     try {
-      const res = await fetch(`/api/events/${eventId}/tables/${table.id}/guests/${unassignGuest.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "unassign" }),
-      });
+      const res = await fetch(
+        `/api/events/${eventId}/tables/${table.id}/guests/${unassignGuest.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "unassign" }),
+        },
+      );
       if (!res.ok) {
         toast.error("Erreur lors du retrait.");
         return;
@@ -348,7 +431,9 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
         ...prev,
         guests: prev.guests.filter((g) => g.id !== unassignGuest.id),
       }));
-      toast.success(`${unassignGuest.firstName} ${unassignGuest.lastName} a été retiré de la table.`);
+      toast.success(
+        `${unassignGuest.firstName} ${unassignGuest.lastName} a été retiré de la table.`,
+      );
       setUnassignGuest(null);
     } finally {
       setUnassignLoading(false);
@@ -385,7 +470,9 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
 
-        const rawRows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: "" });
+        const rawRows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, {
+          defval: "",
+        });
         if (rawRows.length === 0) {
           toast.error("Le fichier Excel est vide.");
           return;
@@ -397,13 +484,23 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
         setUploadedFileName(file.name);
 
         // Auto mapping
-        const fnCol = headers.find(h => /prenom|prénom|first/i.test(h)) || headers[0] || "";
-        const lnCol = headers.find(h => /nom|last/i.test(h)) || headers[1] || "";
-        const emCol = headers.find(h => /mail/i.test(h)) || "";
-        const phCol = headers.find(h => /tel|tél|phone/i.test(h)) || "";
-        const typeCol = headers.find(h => /type|invit/i.test(h)) || "";
-        const p1FnCol = headers.find(h => /conjoint.*prenom|accomp.*prenom|plus.*first/i.test(h)) || "";
-        const p1LnCol = headers.find(h => /conjoint.*nom|accomp.*nom|plus.*last/i.test(h)) || "";
+        const fnCol =
+          headers.find((h) => /prenom|prénom|first/i.test(h)) ||
+          headers[0] ||
+          "";
+        const lnCol =
+          headers.find((h) => /nom|last/i.test(h)) || headers[1] || "";
+        const emCol = headers.find((h) => /mail/i.test(h)) || "";
+        const phCol = headers.find((h) => /tel|tél|phone/i.test(h)) || "";
+        const typeCol = headers.find((h) => /type|invit/i.test(h)) || "";
+        const p1FnCol =
+          headers.find((h) =>
+            /conjoint.*prenom|accomp.*prenom|plus.*first/i.test(h),
+          ) || "";
+        const p1LnCol =
+          headers.find((h) =>
+            /conjoint.*nom|accomp.*nom|plus.*last/i.test(h),
+          ) || "";
 
         setMappedColumns({
           firstName: fnCol,
@@ -414,7 +511,6 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
           plusOneFirstName: p1FnCol,
           plusOneLastName: p1LnCol,
         });
-
       } catch (err) {
         console.error(err);
         toast.error("Impossible de lire le fichier Excel.");
@@ -477,21 +573,38 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
         .map((row) => {
           const fName = String(row[mappedColumns.firstName] || "").trim();
           const lName = String(row[mappedColumns.lastName] || "").trim();
-          const emailVal = mappedColumns.email ? String(row[mappedColumns.email] || "").trim() : "";
-          const phoneVal = mappedColumns.phone ? String(row[mappedColumns.phone] || "").trim() : "";
-          
+          const emailVal = mappedColumns.email
+            ? String(row[mappedColumns.email] || "").trim()
+            : "";
+          const phoneVal = mappedColumns.phone
+            ? String(row[mappedColumns.phone] || "").trim()
+            : "";
+
           let invType: "SINGLE" | "COUPLE" = "SINGLE";
           if (mappedColumns.invitationType) {
-            const rawType = String(row[mappedColumns.invitationType] || "").toLowerCase();
-            if (rawType.includes("couple") || rawType.includes("deux") || rawType.includes("2")) {
+            const rawType = String(
+              row[mappedColumns.invitationType] || "",
+            ).toLowerCase();
+            if (
+              rawType.includes("couple") ||
+              rawType.includes("deux") ||
+              rawType.includes("2")
+            ) {
               invType = "COUPLE";
             }
-          } else if (mappedColumns.plusOneFirstName && String(row[mappedColumns.plusOneFirstName] || "").trim()) {
+          } else if (
+            mappedColumns.plusOneFirstName &&
+            String(row[mappedColumns.plusOneFirstName] || "").trim()
+          ) {
             invType = "COUPLE";
           }
 
-          const p1Fn = mappedColumns.plusOneFirstName ? String(row[mappedColumns.plusOneFirstName] || "").trim() : "";
-          const p1Ln = mappedColumns.plusOneLastName ? String(row[mappedColumns.plusOneLastName] || "").trim() : "";
+          const p1Fn = mappedColumns.plusOneFirstName
+            ? String(row[mappedColumns.plusOneFirstName] || "").trim()
+            : "";
+          const p1Ln = mappedColumns.plusOneLastName
+            ? String(row[mappedColumns.plusOneLastName] || "").trim()
+            : "";
 
           return {
             firstName: fName,
@@ -510,11 +623,14 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
         return;
       }
 
-      const res = await fetch(`/api/events/${eventId}/tables/${table.id}/guests/import`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ guests: guestsToImport }),
-      });
+      const res = await fetch(
+        `/api/events/${eventId}/tables/${table.id}/guests/import`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ guests: guestsToImport }),
+        },
+      );
 
       const data = await res.json();
       if (!res.ok) {
@@ -522,7 +638,9 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
         return;
       }
 
-      toast.success(`Importation réussie : ${data.created} invité(s) ajouté(s).`);
+      toast.success(
+        `Importation réussie : ${data.created} invité(s) ajouté(s).`,
+      );
       setImportOpen(false);
       clearUploadedFile();
       await refreshTable();
@@ -538,13 +656,19 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
   const filteredGuests = table.guests.filter(
     (g) =>
       g.firstName.toLowerCase().includes(search.toLowerCase()) ||
-      g.lastName.toLowerCase().includes(search.toLowerCase())
+      g.lastName.toLowerCase().includes(search.toLowerCase()),
   );
 
   const previewRows = rawData.slice(0, 5).map((row) => {
-    const fName = mappedColumns.firstName ? String(row[mappedColumns.firstName] || "").trim() : "";
-    const lName = mappedColumns.lastName ? String(row[mappedColumns.lastName] || "").trim() : "";
-    const emailVal = mappedColumns.email ? String(row[mappedColumns.email] || "").trim() : "";
+    const fName = mappedColumns.firstName
+      ? String(row[mappedColumns.firstName] || "").trim()
+      : "";
+    const lName = mappedColumns.lastName
+      ? String(row[mappedColumns.lastName] || "").trim()
+      : "";
+    const emailVal = mappedColumns.email
+      ? String(row[mappedColumns.email] || "").trim()
+      : "";
     const plusOne = mappedColumns.plusOneFirstName
       ? `${String(row[mappedColumns.plusOneFirstName] || "")} ${mappedColumns.plusOneLastName ? String(row[mappedColumns.plusOneLastName] || "") : ""}`.trim()
       : "";
@@ -571,7 +695,10 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
           </h1>
           <p className="mt-0.5 text-sm text-slate-500">
             {(() => {
-              const occupiedSeats = table.guests.reduce((s, g) => s + (g.invitationType === "COUPLE" ? 2 : 1), 0);
+              const occupiedSeats = table.guests.reduce(
+                (s, g) => s + (g.invitationType === "COUPLE" ? 2 : 1),
+                0,
+              );
               const free = table.capacity - occupiedSeats;
               return `${table.guests.length} invité${table.guests.length !== 1 ? "s" : ""} (${occupiedSeats} place${occupiedSeats !== 1 ? "s" : ""} occupée${occupiedSeats !== 1 ? "s" : ""}) · Capacité : ${table.capacity} places (${free} libre${free !== 1 ? "s" : ""})`;
             })()}
@@ -588,6 +715,22 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
           >
             <Upload className="h-4 w-4" />
             Importer Excel
+          </Button>
+
+          {/* Download all invitations */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void handleDownloadAllInvitations()}
+            disabled={downloadingAll}
+            className="gap-2 border-[#E8ECF4] text-slate-600 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-200 cursor-pointer h-10 px-4 rounded-xl disabled:opacity-40"
+          >
+            {downloadingAll ? (
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            Télécharger les invitations
           </Button>
 
           {/* Export Excel */}
@@ -647,7 +790,9 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
               <Users className="h-6 w-6 text-slate-400" />
             </div>
             <p className="text-sm font-medium text-slate-500">
-              {search ? "Aucun invité ne correspond à votre recherche." : "Aucun invité assigné à cette table."}
+              {search
+                ? "Aucun invité ne correspond à votre recherche."
+                : "Aucun invité assigné à cette table."}
             </p>
             {!search && (
               <button
@@ -677,7 +822,9 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
                 <li
                   key={guest.id}
                   className={`grid grid-cols-[1.5fr_1.5fr_1fr_1.2fr_140px] items-center gap-2 px-5 py-3.5 transition-colors hover:bg-slate-50/60 ${
-                    i !== filteredGuests.length - 1 ? "border-b border-[#E8ECF4]" : ""
+                    i !== filteredGuests.length - 1
+                      ? "border-b border-[#E8ECF4]"
+                      : ""
                   }`}
                 >
                   {/* Name */}
@@ -696,9 +843,13 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
 
                   {/* Invitation Type */}
                   <div className="flex justify-center">
-                    <span className={`px-2 py-0.5 rounded-lg text-xs font-semibold ${
-                      guest.invitationType === "COUPLE" ? "bg-purple-50 text-purple-700" : "bg-blue-50 text-blue-700"
-                    }`}>
+                    <span
+                      className={`px-2 py-0.5 rounded-lg text-xs font-semibold ${
+                        guest.invitationType === "COUPLE"
+                          ? "bg-purple-50 text-purple-700"
+                          : "bg-blue-50 text-blue-700"
+                      }`}
+                    >
                       {guest.invitationType === "COUPLE" ? "Couple" : "Seul"}
                     </span>
                   </div>
@@ -706,12 +857,28 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
                   {/* Accompagnateur */}
                   <span className="text-xs text-slate-600 truncate">
                     {guest.invitationType === "COUPLE"
-                      ? `${guest.plusOneFirstName || ""} ${guest.plusOneLastName || ""}`.trim() || <span className="text-slate-400 italic">Non spécifié</span>
+                      ? `${guest.plusOneFirstName || ""} ${guest.plusOneLastName || ""}`.trim() || (
+                          <span className="text-slate-400 italic">
+                            Non spécifié
+                          </span>
+                        )
                       : "—"}
                   </span>
 
                   {/* Actions */}
                   <div className="flex items-center justify-center gap-1">
+                    <button
+                      onClick={() =>
+                        window.open(
+                          `/api/events/${eventId}/guests/${guest.id}/download-invitation`,
+                          "_blank",
+                        )
+                      }
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-purple-50 hover:text-purple-600"
+                      title="Télécharger l'invitation avec QR code"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                    </button>
                     <button
                       onClick={() => setViewGuest(guest)}
                       className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-[#EEF0FF] hover:text-[#1E5FF5]"
@@ -797,9 +964,15 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
           </div>
 
           {activeTab === "existing" ? (
-            <form onSubmit={handleAssignExistingGuest} className="space-y-4 pt-2">
+            <form
+              onSubmit={handleAssignExistingGuest}
+              className="space-y-4 pt-2"
+            >
               <div className="space-y-1.5">
-                <Label htmlFor="existing-guest-select" className="text-[14px] font-medium text-slate-700 mb-1.5 block">
+                <Label
+                  htmlFor="existing-guest-select"
+                  className="text-[14px] font-medium text-slate-700 mb-1.5 block"
+                >
                   Sélectionner un invité <span className="text-red-500">*</span>
                 </Label>
                 {loadingUnassigned ? (
@@ -821,9 +994,10 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
                     >
                       <option value="">— Choisir un invité —</option>
                       {unassignedGuests.map((g) => {
-                        const name = g.invitationType === "COUPLE"
-                          ? `Couple ${g.firstName} & ${g.plusOneFirstName ?? ""} ${g.lastName || ""}`.trim()
-                          : `${g.firstName} ${g.lastName}`;
+                        const name =
+                          g.invitationType === "COUPLE"
+                            ? `Couple ${g.firstName} ${g.lastName}`.trim()
+                            : `${g.firstName} ${g.lastName}`;
                         return (
                           <option key={g.id} value={g.id}>
                             {name}
@@ -849,7 +1023,12 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={createLoading || !selectedGuestId || loadingUnassigned || unassignedGuests.length === 0}
+                  disabled={
+                    createLoading ||
+                    !selectedGuestId ||
+                    loadingUnassigned ||
+                    unassignedGuests.length === 0
+                  }
                   className="h-10 px-5 rounded-xl bg-[#1E5FF5] text-white text-sm font-medium hover:bg-[#154ED0] transition-colors shadow-xs cursor-pointer"
                 >
                   {createLoading ? (
@@ -867,7 +1046,10 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
             <form onSubmit={handleCreateGuest} className="space-y-4 pt-2">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="create-firstname" className="text-[14px] font-medium text-slate-700 mb-1.5 block">
+                  <Label
+                    htmlFor="create-firstname"
+                    className="text-[14px] font-medium text-slate-700 mb-1.5 block"
+                  >
                     Prénom <span className="text-red-500">*</span>
                   </Label>
                   <Input
@@ -881,7 +1063,10 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="create-lastname" className="text-[14px] font-medium text-slate-700 mb-1.5 block">
+                  <Label
+                    htmlFor="create-lastname"
+                    className="text-[14px] font-medium text-slate-700 mb-1.5 block"
+                  >
                     Nom <span className="text-red-500">*</span>
                   </Label>
                   <Input
@@ -896,7 +1081,10 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="create-email" className="text-[14px] font-medium text-slate-700 mb-1.5 block">
+                <Label
+                  htmlFor="create-email"
+                  className="text-[14px] font-medium text-slate-700 mb-1.5 block"
+                >
                   Adresse e-mail
                 </Label>
                 <Input
@@ -910,7 +1098,10 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="create-phone" className="text-[14px] font-medium text-slate-700 mb-1.5 block">
+                <Label
+                  htmlFor="create-phone"
+                  className="text-[14px] font-medium text-slate-700 mb-1.5 block"
+                >
                   Téléphone
                 </Label>
                 <Input
@@ -923,14 +1114,19 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="create-invitation-type" className="text-[14px] font-medium text-slate-700 mb-1.5 block">
+                <Label
+                  htmlFor="create-invitation-type"
+                  className="text-[14px] font-medium text-slate-700 mb-1.5 block"
+                >
                   Type d&apos;invitation <span className="text-red-500">*</span>
                 </Label>
                 <div className="relative">
                   <select
                     id="create-invitation-type"
                     value={invitationType}
-                    onChange={(e) => setInvitationType(e.target.value as "SINGLE" | "COUPLE")}
+                    onChange={(e) =>
+                      setInvitationType(e.target.value as "SINGLE" | "COUPLE")
+                    }
                     className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-[14px] outline-none appearance-none focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 shadow-xs cursor-pointer"
                   >
                     <option value="SINGLE">Seul</option>
@@ -949,7 +1145,10 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
                   </p>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
-                      <Label htmlFor="create-plusone-firstname" className="text-[14px] font-medium text-slate-700 mb-1.5 block">
+                      <Label
+                        htmlFor="create-plusone-firstname"
+                        className="text-[14px] font-medium text-slate-700 mb-1.5 block"
+                      >
                         Prénom <span className="text-red-500">*</span>
                       </Label>
                       <Input
@@ -962,7 +1161,10 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="create-plusone-lastname" className="text-[14px] font-medium text-slate-700 mb-1.5 block">
+                      <Label
+                        htmlFor="create-plusone-lastname"
+                        className="text-[14px] font-medium text-slate-700 mb-1.5 block"
+                      >
                         Nom <span className="text-red-500">*</span>
                       </Label>
                       <Input
@@ -989,7 +1191,9 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={createLoading || !firstName.trim() || !lastName.trim()}
+                  disabled={
+                    createLoading || !firstName.trim() || !lastName.trim()
+                  }
                   className="h-10 px-5 rounded-xl bg-[#1E5FF5] text-white text-sm font-medium hover:bg-[#154ED0] transition-colors shadow-xs cursor-pointer"
                 >
                   {createLoading ? (
@@ -1007,7 +1211,6 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
         </DialogContent>
       </Dialog>
 
-
       {/* ── Edit Guest Dialog ────────────────────────────────────────────────── */}
       <Dialog open={!!editGuest} onOpenChange={(o) => !o && setEditGuest(null)}>
         <DialogContent className="max-w-md w-full rounded-[24px] bg-white p-6 shadow-2xl border-none gap-0 overflow-hidden outline-none">
@@ -1019,7 +1222,10 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
           <form onSubmit={handleEditGuest} className="space-y-4 pt-2">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="edit-firstname" className="text-[14px] font-medium text-slate-700 mb-1.5 block">
+                <Label
+                  htmlFor="edit-firstname"
+                  className="text-[14px] font-medium text-slate-700 mb-1.5 block"
+                >
                   Prénom <span className="text-red-500">*</span>
                 </Label>
                 <Input
@@ -1032,7 +1238,10 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="edit-lastname" className="text-[14px] font-medium text-slate-700 mb-1.5 block">
+                <Label
+                  htmlFor="edit-lastname"
+                  className="text-[14px] font-medium text-slate-700 mb-1.5 block"
+                >
                   Nom <span className="text-red-500">*</span>
                 </Label>
                 <Input
@@ -1046,7 +1255,10 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="edit-email" className="text-[14px] font-medium text-slate-700 mb-1.5 block">
+              <Label
+                htmlFor="edit-email"
+                className="text-[14px] font-medium text-slate-700 mb-1.5 block"
+              >
                 Adresse e-mail
               </Label>
               <Input
@@ -1059,7 +1271,10 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="edit-phone" className="text-[14px] font-medium text-slate-700 mb-1.5 block">
+              <Label
+                htmlFor="edit-phone"
+                className="text-[14px] font-medium text-slate-700 mb-1.5 block"
+              >
                 Téléphone
               </Label>
               <Input
@@ -1071,14 +1286,19 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="edit-invitation-type" className="text-[14px] font-medium text-slate-700 mb-1.5 block">
+              <Label
+                htmlFor="edit-invitation-type"
+                className="text-[14px] font-medium text-slate-700 mb-1.5 block"
+              >
                 Type d&apos;invitation <span className="text-red-500">*</span>
               </Label>
               <div className="relative">
                 <select
                   id="edit-invitation-type"
                   value={editInvitationType}
-                  onChange={(e) => setEditInvitationType(e.target.value as "SINGLE" | "COUPLE")}
+                  onChange={(e) =>
+                    setEditInvitationType(e.target.value as "SINGLE" | "COUPLE")
+                  }
                   className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-[14px] outline-none appearance-none focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 shadow-xs cursor-pointer"
                 >
                   <option value="SINGLE">Seul</option>
@@ -1097,7 +1317,10 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="edit-plusone-firstname" className="text-[14px] font-medium text-slate-700 mb-1.5 block">
+                    <Label
+                      htmlFor="edit-plusone-firstname"
+                      className="text-[14px] font-medium text-slate-700 mb-1.5 block"
+                    >
                       Prénom <span className="text-red-500">*</span>
                     </Label>
                     <Input
@@ -1110,7 +1333,10 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="edit-plusone-lastname" className="text-[14px] font-medium text-slate-700 mb-1.5 block">
+                    <Label
+                      htmlFor="edit-plusone-lastname"
+                      className="text-[14px] font-medium text-slate-700 mb-1.5 block"
+                    >
                       Nom <span className="text-red-500">*</span>
                     </Label>
                     <Input
@@ -1137,7 +1363,9 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
               </Button>
               <Button
                 type="submit"
-                disabled={editLoading || !editFirstName.trim() || !editLastName.trim()}
+                disabled={
+                  editLoading || !editFirstName.trim() || !editLastName.trim()
+                }
                 className="h-10 px-5 rounded-xl bg-[#1E5FF5] text-white text-sm font-medium hover:bg-[#154ED0] transition-colors shadow-xs cursor-pointer"
               >
                 {editLoading ? (
@@ -1155,7 +1383,10 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
       </Dialog>
 
       {/* ── Unassign Guest Dialog ────────────────────────────────────────────── */}
-      <Dialog open={!!unassignGuest} onOpenChange={(o) => !o && setUnassignGuest(null)}>
+      <Dialog
+        open={!!unassignGuest}
+        onOpenChange={(o) => !o && setUnassignGuest(null)}
+      >
         <DialogContent className="max-w-md w-full rounded-[24px] bg-white p-6 shadow-2xl border-none gap-0 overflow-hidden outline-none">
           <DialogHeader className="pb-4 border-b border-[#E8ECF4] mb-5">
             <DialogTitle className="text-[18px] font-bold text-slate-800">
@@ -1164,10 +1395,15 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <p className="text-sm text-slate-600">
-              Êtes-vous sûr de vouloir retirer <strong className="text-slate-800">« {unassignGuest?.firstName} {unassignGuest?.lastName} »</strong> de cette table ?
+              Êtes-vous sûr de vouloir retirer{" "}
+              <strong className="text-slate-800">
+                « {unassignGuest?.firstName} {unassignGuest?.lastName} »
+              </strong>{" "}
+              de cette table ?
             </p>
             <p className="text-xs text-slate-400">
-              L&apos;invité sera toujours présent dans l&apos;événement, mais n&apos;aura plus de place attitrée.
+              L&apos;invité sera toujours présent dans l&apos;événement, mais
+              n&apos;aura plus de place attitrée.
             </p>
           </div>
           <DialogFooter className="bg-[#F8FAFC] border-t border-[#E8ECF4] px-6 py-4 flex justify-end gap-3 rounded-b-[24px] -mx-6 -mb-6 mt-6">
@@ -1191,7 +1427,10 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
       </Dialog>
 
       {/* ── Delete Guest Dialog ──────────────────────────────────────────────── */}
-      <Dialog open={!!deleteGuest} onOpenChange={(o) => !o && setDeleteGuest(null)}>
+      <Dialog
+        open={!!deleteGuest}
+        onOpenChange={(o) => !o && setDeleteGuest(null)}
+      >
         <DialogContent className="max-w-md w-full rounded-[24px] bg-white p-6 shadow-2xl border-none gap-0 overflow-hidden outline-none">
           <DialogHeader className="pb-4 border-b border-[#E8ECF4] mb-5">
             <DialogTitle className="text-[18px] font-bold text-slate-800">
@@ -1202,9 +1441,16 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
             <div className="flex gap-3 items-start bg-red-50 text-red-700 p-4 rounded-xl border border-red-100">
               <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-semibold">Cette action est irréversible</p>
+                <p className="text-sm font-semibold">
+                  Cette action est irréversible
+                </p>
                 <p className="text-xs text-red-600 mt-0.5">
-                  Êtes-vous sûr de vouloir supprimer définitivement l&apos;invité <strong className="text-red-900">« {deleteGuest?.firstName} {deleteGuest?.lastName} »</strong> de l&apos;événement ?
+                  Êtes-vous sûr de vouloir supprimer définitivement
+                  l&apos;invité{" "}
+                  <strong className="text-red-900">
+                    « {deleteGuest?.firstName} {deleteGuest?.lastName} »
+                  </strong>{" "}
+                  de l&apos;événement ?
                 </p>
               </div>
             </div>
@@ -1230,14 +1476,23 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
       </Dialog>
 
       {/* ── Import Guests Dialog ─────────────────────────────────────────────── */}
-      <Dialog open={importOpen} onOpenChange={(o) => { if (!o) { setImportOpen(false); clearUploadedFile(); } }}>
+      <Dialog
+        open={importOpen}
+        onOpenChange={(o) => {
+          if (!o) {
+            setImportOpen(false);
+            clearUploadedFile();
+          }
+        }}
+      >
         <DialogContent className="max-w-lg w-full rounded-[24px] bg-white p-6 shadow-2xl border-none gap-0 overflow-hidden outline-none">
           <DialogHeader className="pb-4 border-b border-[#E8ECF4] mb-4">
             <DialogTitle className="text-[18px] font-bold text-slate-800">
               Importer des invités
             </DialogTitle>
             <p className="text-xs text-slate-500 mt-1">
-              Chargez un fichier Excel avec les colonnes Prénom, Nom, Email, Téléphone, Accompagnateur.
+              Chargez un fichier Excel avec les colonnes Prénom, Nom, Email,
+              Téléphone, Accompagnateur.
             </p>
           </DialogHeader>
 
@@ -1264,7 +1519,7 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
                   className="hidden"
                   onChange={handleFileChange}
                 />
-                
+
                 <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-50 text-[#1E5FF5] mb-4">
                   <Upload className="h-6 w-6" />
                 </div>
@@ -1318,12 +1573,19 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
                       <div className="relative w-2/3">
                         <select
                           value={mappedColumns.firstName}
-                          onChange={(e) => setMappedColumns({ ...mappedColumns, firstName: e.target.value })}
+                          onChange={(e) =>
+                            setMappedColumns({
+                              ...mappedColumns,
+                              firstName: e.target.value,
+                            })
+                          }
                           className="w-full h-10 pl-3 pr-8 rounded-xl border border-slate-200 bg-white text-slate-800 text-[13px] outline-none appearance-none focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 cursor-pointer"
                         >
                           <option value="">— Choisir —</option>
                           {fileHeaders.map((header) => (
-                            <option key={header} value={header}>{header}</option>
+                            <option key={header} value={header}>
+                              {header}
+                            </option>
                           ))}
                         </select>
                         <div className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-400">
@@ -1340,12 +1602,19 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
                       <div className="relative w-2/3">
                         <select
                           value={mappedColumns.lastName}
-                          onChange={(e) => setMappedColumns({ ...mappedColumns, lastName: e.target.value })}
+                          onChange={(e) =>
+                            setMappedColumns({
+                              ...mappedColumns,
+                              lastName: e.target.value,
+                            })
+                          }
                           className="w-full h-10 pl-3 pr-8 rounded-xl border border-slate-200 bg-white text-slate-800 text-[13px] outline-none appearance-none focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 cursor-pointer"
                         >
                           <option value="">— Choisir —</option>
                           {fileHeaders.map((header) => (
-                            <option key={header} value={header}>{header}</option>
+                            <option key={header} value={header}>
+                              {header}
+                            </option>
                           ))}
                         </select>
                         <div className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-400">
@@ -1362,12 +1631,19 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
                       <div className="relative w-2/3">
                         <select
                           value={mappedColumns.email}
-                          onChange={(e) => setMappedColumns({ ...mappedColumns, email: e.target.value })}
+                          onChange={(e) =>
+                            setMappedColumns({
+                              ...mappedColumns,
+                              email: e.target.value,
+                            })
+                          }
                           className="w-full h-10 pl-3 pr-8 rounded-xl border border-slate-200 bg-white text-slate-800 text-[13px] outline-none appearance-none focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 cursor-pointer"
                         >
                           <option value="">— Choisir (Optionnel) —</option>
                           {fileHeaders.map((header) => (
-                            <option key={header} value={header}>{header}</option>
+                            <option key={header} value={header}>
+                              {header}
+                            </option>
                           ))}
                         </select>
                         <div className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-400">
@@ -1384,12 +1660,19 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
                       <div className="relative w-2/3">
                         <select
                           value={mappedColumns.phone}
-                          onChange={(e) => setMappedColumns({ ...mappedColumns, phone: e.target.value })}
+                          onChange={(e) =>
+                            setMappedColumns({
+                              ...mappedColumns,
+                              phone: e.target.value,
+                            })
+                          }
                           className="w-full h-10 pl-3 pr-8 rounded-xl border border-slate-200 bg-white text-slate-800 text-[13px] outline-none appearance-none focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 cursor-pointer"
                         >
                           <option value="">— Choisir (Optionnel) —</option>
                           {fileHeaders.map((header) => (
-                            <option key={header} value={header}>{header}</option>
+                            <option key={header} value={header}>
+                              {header}
+                            </option>
                           ))}
                         </select>
                         <div className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-400">
@@ -1406,12 +1689,19 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
                       <div className="relative w-2/3">
                         <select
                           value={mappedColumns.invitationType}
-                          onChange={(e) => setMappedColumns({ ...mappedColumns, invitationType: e.target.value })}
+                          onChange={(e) =>
+                            setMappedColumns({
+                              ...mappedColumns,
+                              invitationType: e.target.value,
+                            })
+                          }
                           className="w-full h-10 pl-3 pr-8 rounded-xl border border-slate-200 bg-white text-slate-800 text-[13px] outline-none appearance-none focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 cursor-pointer"
                         >
                           <option value="">— Choisir (Optionnel) —</option>
                           {fileHeaders.map((header) => (
-                            <option key={header} value={header}>{header}</option>
+                            <option key={header} value={header}>
+                              {header}
+                            </option>
                           ))}
                         </select>
                         <div className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-400">
@@ -1428,12 +1718,19 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
                       <div className="relative w-2/3">
                         <select
                           value={mappedColumns.plusOneFirstName}
-                          onChange={(e) => setMappedColumns({ ...mappedColumns, plusOneFirstName: e.target.value })}
+                          onChange={(e) =>
+                            setMappedColumns({
+                              ...mappedColumns,
+                              plusOneFirstName: e.target.value,
+                            })
+                          }
                           className="w-full h-10 pl-3 pr-8 rounded-xl border border-slate-200 bg-white text-slate-800 text-[13px] outline-none appearance-none focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 cursor-pointer"
                         >
                           <option value="">— Choisir (Optionnel) —</option>
                           {fileHeaders.map((header) => (
-                            <option key={header} value={header}>{header}</option>
+                            <option key={header} value={header}>
+                              {header}
+                            </option>
                           ))}
                         </select>
                         <div className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-400">
@@ -1450,12 +1747,19 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
                       <div className="relative w-2/3">
                         <select
                           value={mappedColumns.plusOneLastName}
-                          onChange={(e) => setMappedColumns({ ...mappedColumns, plusOneLastName: e.target.value })}
+                          onChange={(e) =>
+                            setMappedColumns({
+                              ...mappedColumns,
+                              plusOneLastName: e.target.value,
+                            })
+                          }
                           className="w-full h-10 pl-3 pr-8 rounded-xl border border-slate-200 bg-white text-slate-800 text-[13px] outline-none appearance-none focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 cursor-pointer"
                         >
                           <option value="">— Choisir (Optionnel) —</option>
                           {fileHeaders.map((header) => (
-                            <option key={header} value={header}>{header}</option>
+                            <option key={header} value={header}>
+                              {header}
+                            </option>
                           ))}
                         </select>
                         <div className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-400">
@@ -1477,16 +1781,29 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
                       <table className="w-full border-collapse text-left text-xs">
                         <thead>
                           <tr className="bg-slate-50 border-b border-slate-200">
-                            <th className="px-3 py-2 font-semibold text-slate-500">Nom complet</th>
-                            <th className="px-3 py-2 font-semibold text-slate-500">Email</th>
-                            <th className="px-3 py-2 font-semibold text-slate-500">Accompagnateur</th>
+                            <th className="px-3 py-2 font-semibold text-slate-500">
+                              Nom complet
+                            </th>
+                            <th className="px-3 py-2 font-semibold text-slate-500">
+                              Email
+                            </th>
+                            <th className="px-3 py-2 font-semibold text-slate-500">
+                              Accompagnateur
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
                           {previewRows.map((row, idx) => (
-                            <tr key={idx} className="border-b border-slate-100 last:border-none">
+                            <tr
+                              key={idx}
+                              className="border-b border-slate-100 last:border-none"
+                            >
                               <td className="px-3 py-2 text-slate-700 font-medium truncate max-w-[150px]">
-                                {row.name || <span className="text-slate-400 italic">Vide</span>}
+                                {row.name || (
+                                  <span className="text-slate-400 italic">
+                                    Vide
+                                  </span>
+                                )}
                               </td>
                               <td className="px-3 py-2 text-slate-600 truncate max-w-[150px]">
                                 {row.email || "—"}
@@ -1521,7 +1838,11 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
               <Button
                 type="button"
                 onClick={handleImportSubmit}
-                disabled={importLoading || !mappedColumns.firstName || !mappedColumns.lastName}
+                disabled={
+                  importLoading ||
+                  !mappedColumns.firstName ||
+                  !mappedColumns.lastName
+                }
                 className="h-10 px-5 rounded-xl bg-[#1E5FF5] text-white text-sm font-medium hover:bg-[#154ED0] transition-colors shadow-xs disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 {importLoading ? (
@@ -1557,7 +1878,8 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
                 {viewGuest.invitationType === "COUPLE" && (
                   <p className="text-sm text-pink-600 flex items-center gap-1.5">
                     <Heart className="h-3.5 w-3.5 shrink-0" />
-                    Couple avec {viewGuest.plusOneFirstName || ""} {viewGuest.plusOneLastName || ""}
+                    Couple avec {viewGuest.plusOneFirstName || ""}{" "}
+                    {viewGuest.plusOneLastName || ""}
                   </p>
                 )}
               </div>
@@ -1581,7 +1903,9 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
               {/* Meta */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-xl bg-[#F4F6FB] px-4 py-3">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Table</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                    Table
+                  </p>
                   <span className="inline-flex items-center gap-1 text-sm font-semibold text-[#1E5FF5]">
                     <Armchair className="h-3.5 w-3.5 shrink-0" />
                     {table.name}
@@ -1589,8 +1913,12 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
                 </div>
 
                 <div className="rounded-xl bg-[#F4F6FB] px-4 py-3">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">RSVP</p>
-                  <span className={`inline-flex items-center gap-1 text-xs font-medium rounded-lg px-2 py-0.5 ${RSVP_STYLES[viewGuest.rsvpStatus]}`}>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                    RSVP
+                  </p>
+                  <span
+                    className={`inline-flex items-center gap-1 text-xs font-medium rounded-lg px-2 py-0.5 ${RSVP_STYLES[viewGuest.rsvpStatus]}`}
+                  >
                     {RSVP_ICONS[viewGuest.rsvpStatus]}
                     {RSVP_LABELS[viewGuest.rsvpStatus]}
                   </span>

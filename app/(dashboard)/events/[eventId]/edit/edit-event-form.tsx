@@ -191,13 +191,15 @@ function FileUploadSlot({
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={uploading}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[#B7C4E0] bg-white py-7 text-slate-400 transition-all hover:border-[#534AB7] hover:text-[#534AB7] hover:bg-[#EEF3FF] cursor-pointer disabled:opacity-60"
+          className=" px-6 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[#B7C4E0] bg-white py-7 text-slate-400 transition-all hover:border-[#534AB7] hover:text-[#534AB7] hover:bg-[#EEF3FF] cursor-pointer disabled:opacity-60"
         >
           {uploading ? (
             <Loader2 className="h-5 w-5 animate-spin text-[#534AB7]" />
           ) : (
             <span className="text-xs font-semibold">
-              Ajouter un fichier d'invitation
+              Ajouter un fichier d'invitation, votre design doit mentionner une
+              mention "NOM" et "TABLE" pour que nous puissions personnaliser les
+              invitations.
             </span>
           )}
         </button>
@@ -250,9 +252,8 @@ export function EditEventForm({
       formData.append("upload_preset", UPLOAD_PRESET);
       formData.append("folder", FOLDER);
 
-      // Use auto endpoint to accept images and pdfs
       const res = await fetch(
-        `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`,
+        `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
         { method: "POST", body: formData },
       );
 
@@ -266,6 +267,39 @@ export function EditEventForm({
       }
 
       setter(data.secure_url);
+    } catch (err) {
+      setUploadError(
+        err instanceof Error ? err.message : "Erreur lors de l'upload.",
+      );
+    } finally {
+      setUploadingField(null);
+    }
+  };
+
+  const uploadInvitationFile = async (file: File) => {
+    setUploadError(null);
+    setUploadingField("invitationFileUrl");
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("eventId", initial.id);
+
+      const res = await fetch("/api/upload/invitation", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = (await res.json()) as {
+        url?: string;
+        error?: string;
+      };
+
+      if (!res.ok || !data.url) {
+        throw new Error(data.error ?? "Échec de l'upload.");
+      }
+
+      setInvitationFileUrl(data.url);
     } catch (err) {
       setUploadError(
         err instanceof Error ? err.message : "Erreur lors de l'upload.",
@@ -289,7 +323,7 @@ export function EditEventForm({
 
   const handleInvitationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) void uploadFile(file, setInvitationFileUrl, "invitationFileUrl");
+    if (file) void uploadInvitationFile(file);
     e.target.value = "";
   };
 

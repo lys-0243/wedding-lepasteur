@@ -49,6 +49,37 @@ export function TablesClient({ eventId, initialTables }: Props) {
   const [deleteTable, setDeleteTable] = useState<TableRow | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  // ── Batch download ─────────────────────────────────────────────────────────
+  const [downloadingTableId, setDownloadingTableId] = useState<string | null>(null);
+
+  async function handleDownloadAllInvitations(tableId: string) {
+    try {
+      const res = await fetch(`/api/events/${eventId}/tables/${tableId}/guests`);
+      const guests = await res.json();
+
+      if (!Array.isArray(guests) || guests.length === 0) {
+        toast.error("Aucun invité dans cette table.");
+        return;
+      }
+
+      setDownloadingTableId(tableId);
+
+      for (const guest of guests) {
+        window.open(
+          `/api/events/${eventId}/guests/${guest.id}/download-invitation`,
+          "_blank",
+        );
+        await new Promise((r) => setTimeout(r, 400));
+      }
+
+      toast.success(`${guests.length} invitation(s) générée(s).`);
+    } catch {
+      toast.error("Erreur lors de la génération des invitations.");
+    } finally {
+      setDownloadingTableId(null);
+    }
+  }
+
   // ── Import dialog ──────────────────────────────────────────────────────────
   const [importOpen, setImportOpen] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
@@ -379,7 +410,7 @@ export function TablesClient({ eventId, initialTables }: Props) {
       {/* ── Table list ────────────────────────────────────────────────────── */}
       <div className="mt-4 overflow-hidden rounded-2xl border border-[#E8ECF4] bg-white shadow-sm">
         {/* Table head */}
-        <div className="grid grid-cols-[auto_1fr_120px_100px_120px] items-center border-b border-[#E8ECF4] bg-slate-50/60 px-5 py-3 text-[0.7rem] font-bold uppercase tracking-widest text-slate-400">
+        <div className="grid grid-cols-[auto_1fr_120px_100px_140px] items-center border-b border-[#E8ECF4] bg-slate-50/60 px-5 py-3 text-[0.7rem] font-bold uppercase tracking-widest text-slate-400">
           <span className="w-8" />
           <span>Nom</span>
           <span className="text-center">Capacité</span>
@@ -419,7 +450,7 @@ export function TablesClient({ eventId, initialTables }: Props) {
               return (
                 <li
                   key={table.id}
-                  className={`grid grid-cols-[auto_1fr_120px_100px_120px] items-center gap-2 px-5 py-3.5 transition-colors hover:bg-slate-50/60 ${
+                  className={`grid grid-cols-[auto_1fr_120px_100px_140px] items-center gap-2 px-5 py-3.5 transition-colors hover:bg-slate-50/60 ${
                     i !== filtered.length - 1 ? "border-b border-[#E8ECF4]" : ""
                   }`}
                 >
@@ -464,6 +495,18 @@ export function TablesClient({ eventId, initialTables }: Props) {
                     >
                       <Eye className="h-3.5 w-3.5" />
                     </Link>
+                    <button
+                      onClick={() => void handleDownloadAllInvitations(table.id)}
+                      disabled={downloadingTableId === table.id}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-purple-50 hover:text-purple-600 disabled:opacity-40"
+                      title="Télécharger les invitations"
+                    >
+                      {downloadingTableId === table.id ? (
+                        <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
+                      ) : (
+                        <Download className="h-3.5 w-3.5" />
+                      )}
+                    </button>
                     <button
                       onClick={() => {
                         setEditTable(table);

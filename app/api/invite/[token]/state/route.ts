@@ -29,6 +29,7 @@ export async function GET(_req: Request, { params }: RouteContext) {
           venue: true,
           profileImageUrl: true,
           coverImageUrl: true,
+          invitationFileUrl: true,
         },
       },
     },
