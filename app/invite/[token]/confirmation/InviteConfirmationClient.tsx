@@ -40,11 +40,15 @@ type InviteState = {
       venue: string | null;
       profileImageUrl: string | null;
       coverImageUrl: string | null;
+      invitationFileUrl: string | null;
     };
   };
   drinks: Drink[];
   selections: Selection[];
 };
+
+const A4_WIDTH = 595.28;
+const A4_HEIGHT = 841.89;
 
 function formatDate(iso: string | null) {
   if (!iso) return "Date à définir";
@@ -55,10 +59,133 @@ function formatDate(iso: string | null) {
   }).format(new Date(iso));
 }
 
+function safeFileName(value: string) {
+  return value.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_\-\.]/g, "");
+}
+
+async function generateAndDownloadInvitation(
+  invitationFileUrl: string,
+  guestName: string,
+  eventTitle: string,
+  eventDate: string,
+  venue: string | null,
+) {
+  const response = await fetch(invitationFileUrl);
+  if (!response.ok) {
+    throw new Error("Impossible de télécharger le fichier d'invitation.");
+  }
+
+  const arrayBuffer = await response.arrayBuffer();
+  const contentType = (response.headers.get("content-type") || "").toLowerCase();
+  const { PDFDocument, rgb, StandardFonts } = await import("pdf-lib");
+
+  let pdfDoc;
+  const isPdf = contentType.includes("pdf") || invitationFileUrl.toLowerCase().endsWith(".pdf");
+  const isPng = contentType.includes("png") || invitationFileUrl.toLowerCase().endsWith(".png");
+  const isJpg =
+    contentType.includes("jpeg") ||
+    contentType.includes("jpg") ||
+    invitationFileUrl.toLowerCase().endsWith(".jpg") ||
+    invitationFileUrl.toLowerCase().endsWith(".jpeg");
+
+  if (isPdf) {
+    pdfDoc = await PDFDocument.load(arrayBuffer);
+  } else {
+    pdfDoc = await PDFDocument.create();
+    let image: any | undefined;
+
+    if (isJpg) {
+      image = await pdfDoc.embedJpg(arrayBuffer);
+    } else if (isPng) {
+      image = await pdfDoc.embedPng(arrayBuffer);
+    } else {
+      try {
+        pdfDoc = await PDFDocument.load(arrayBuffer);
+      } catch {
+        try {
+          image = await pdfDoc.embedJpg(arrayBuffer);
+        } catch {
+          try {
+            image = await pdfDoc.embedPng(arrayBuffer);
+          } catch {
+            image = undefined;
+          }
+        }
+      }
+    }
+
+    if (image) {
+      const pageWidth = Math.min(image.width, A4_WIDTH);
+      const pageHeight = Math.min(image.height, A4_HEIGHT);
+      const page = pdfDoc.addPage([pageWidth, pageHeight]);
+      const { width, height } = image.scaleToFit(page.getWidth(), page.getHeight());
+      page.drawImage(image, {
+        x: 0,
+        y: page.getHeight() - height,
+        width,
+        height,
+      });
+    } else if (!isPdf) {
+      throw new Error("Le fichier d'invitation uploadé n'est pas un PDF ou une image supportée.");
+    }
+  }
+
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const page = pdfDoc.addPage([A4_WIDTH, A4_HEIGHT]);
+  const header = `Invitation pour : ${guestName}`;
+  const lines = [
+    `Événement : ${eventTitle}`,
+    `Date : ${eventDate}`,
+    `Lieu : ${venue ?? "À définir"}`,
+    "",
+    "Merci de confirmer votre présence via votre lien d'invitation.",
+  ];
+
+  page.drawText(header, {
+    x: 50,
+    y: A4_HEIGHT - 80,
+    size: 24,
+    font,
+    color: rgb(0, 0, 0),
+  });
+
+  page.drawText("Détails de l'invitation :", {
+    x: 50,
+    y: A4_HEIGHT - 120,
+    size: 14,
+    font,
+    color: rgb(0.2, 0.2, 0.2),
+  });
+
+  lines.forEach((line, index) => {
+    page.drawText(line, {
+      x: 50,
+      y: A4_HEIGHT - 150 - index * 22,
+      size: 12,
+      font,
+      color: rgb(0.1, 0.1, 0.1),
+    });
+  });
+
+  const pdfBytes = await pdfDoc.save();
+  const blob = new Blob([pdfBytes as BlobPart], { type: "application/pdf" });
+  const blobUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = blobUrl;
+  link.download = `Invitation_${safeFileName(guestName)}.pdf`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(blobUrl);
+}
+
 export default function InviteConfirmationClient({ token }: { token: string }) {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [state, setState] = useState<InviteState | null>(null);
   const [rsvpStatus, setRsvpStatus] = useState<Rsvp>("PENDING");
   const [plusOneRsvpStatus, setPlusOneRsvpStatus] = useState<Rsvp>("PENDING");
@@ -196,6 +323,36 @@ export default function InviteConfirmationClient({ token }: { token: string }) {
     }
   }
 
+  async function handleGenerateInvitation() {
+    if (!state?.guest.event.invitationFileUrl) {
+      setError("Aucun fichier d'invitation disponible pour génération.");
+      return;
+    }
+
+    setIsGenerating(true);
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      await generateAndDownloadInvitation(
+        state.guest.event.invitationFileUrl,
+        guestFullName,
+        state.guest.event.title,
+        formatDate(state.guest.event.eventDate),
+        state.guest.event.venue,
+      );
+      setSuccessMessage("Invitation générée et téléchargement déclenché.");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Une erreur est survenue lors de la génération du PDF.",
+      );
+    } finally {
+      setIsGenerating(false);
+    }
+  }
+
   if (loading) {
     return (
       <main className="min-h-screen bg-[#F4F6FB] flex items-center justify-center">
@@ -221,16 +378,16 @@ export default function InviteConfirmationClient({ token }: { token: string }) {
 
   return (
     <main className="min-h-screen bg-[#F4F6FB] py-8 px-4">
-      <section className="mx-auto w-full max-w-2xl overflow-hidden rounded-[2rem] bg-white shadow-sm">
+      <section className="mx-auto w-full max-w-2xl overflow-hidden rounded-4xl bg-white shadow-sm">
         <div className="relative overflow-hidden">
           {state.guest.event.coverImageUrl ? (
-            <div className="relative h-56 w-full overflow-hidden rounded-b-[2rem] bg-slate-200">
+            <div className="relative h-56 w-full overflow-hidden rounded-b-4xl bg-slate-200">
               <img
                 src={state.guest.event.coverImageUrl}
                 alt={state.guest.event.title}
                 className="h-full w-full object-cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent" />
+              <div className="absolute inset-0 bg-linear-to-t from-slate-950/60 via-transparent" />
             </div>
           ) : (
             <div className="h-56 bg-slate-200" />
@@ -351,23 +508,27 @@ export default function InviteConfirmationClient({ token }: { token: string }) {
           )}
 
           {error ? <p className="text-sm text-red-600">{error}</p> : null}
+          {successMessage ? (
+            <p className="text-sm text-green-600">{successMessage}</p>
+          ) : null}
 
           <div className="grid gap-3 sm:grid-cols-2">
             <Button
               onClick={() => void handleSave()}
-              disabled={submitting}
+              disabled={submitting || isGenerating}
               className="bg-[#1E5FF5] hover:bg-[#154ED0] text-white"
             >
               {submitting ? "Enregistrement..." : "Enregistrer ma réponse"}
             </Button>
 
-            <a
-              href={`/api/invite/${token}/invitation`}
+            <Button
+              onClick={() => void handleGenerateInvitation()}
+              disabled={isGenerating || !state.guest.event.invitationFileUrl}
               className="inline-flex items-center justify-center gap-2 rounded-3xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
               <Download className="h-4 w-4" />
-              Télécharger mon invitation
-            </a>
+              {isGenerating ? "Génération en cours..." : "Télécharger mon invitation"}
+            </Button>
           </div>
         </div>
       </section>

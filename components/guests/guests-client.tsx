@@ -884,6 +884,18 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
                       >
                         <Share2 className="h-3.5 w-3.5" />
                       </button>
+                      <button
+                        onClick={() =>
+                          window.open(
+                            `/api/events/${eventId}/guests/${guest.id}/download-invitation`,
+                            "_blank",
+                          )
+                        }
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-purple-50 hover:text-purple-600"
+                        title="Télécharger l'invitation avec QR code"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                      </button>
                     </>
                   ) : (
                     <div
@@ -1118,40 +1130,6 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
               </div>
             </div>
 
-            {editInvitationType === "COUPLE" && (
-              <div className="border-t border-slate-100 pt-4 mt-2 space-y-3">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  Accompagnateur / Conjoint
-                </p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-[14px] font-medium text-slate-700 mb-1.5 block">
-                      Prénom <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      placeholder="Prénom"
-                      value={editPlusOneFirstName}
-                      onChange={(e) => setEditPlusOneFirstName(e.target.value)}
-                      required
-                      className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-[14px] outline-none transition-all focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 shadow-xs"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-[14px] font-medium text-slate-700 mb-1.5 block">
-                      Nom <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      placeholder="Nom"
-                      value={editPlusOneLastName}
-                      onChange={(e) => setEditPlusOneLastName(e.target.value)}
-                      required
-                      className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-[14px] outline-none transition-all focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 shadow-xs"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
             <DialogFooter className="bg-[#F8FAFC] border-t border-[#E8ECF4] px-6 py-4 flex justify-end gap-3 rounded-b-[24px] -mx-6 -mb-6 mt-6">
               <Button
                 type="button"
@@ -1339,50 +1317,6 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
                 </div>
               </div>
             </div>
-
-            {createInvitationType === "COUPLE" && (
-              <div className="border-t border-slate-100 pt-4 mt-2 space-y-3">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  Accompagnateur / Conjoint
-                </p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label
-                      htmlFor="create-plusone-firstname"
-                      className="text-[14px] font-medium text-slate-700 mb-1.5 block"
-                    >
-                      Prénom <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="create-plusone-firstname"
-                      placeholder="Prénom"
-                      value={createPlusOneFirstName}
-                      onChange={(e) =>
-                        setCreatePlusOneFirstName(e.target.value)
-                      }
-                      required
-                      className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-[14px] outline-none transition-all focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 shadow-xs"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label
-                      htmlFor="create-plusone-lastname"
-                      className="text-[14px] font-medium text-slate-700 mb-1.5 block"
-                    >
-                      Nom <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="create-plusone-lastname"
-                      placeholder="Nom"
-                      value={createPlusOneLastName}
-                      onChange={(e) => setCreatePlusOneLastName(e.target.value)}
-                      required
-                      className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-[14px] outline-none transition-all focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 shadow-xs"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
 
             <DialogFooter className="bg-[#F8FAFC] border-t border-[#E8ECF4] px-6 py-4 flex justify-end gap-3 rounded-b-[24px] -mx-6 -mb-6 mt-6">
               <Button

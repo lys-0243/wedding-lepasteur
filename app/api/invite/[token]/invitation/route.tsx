@@ -9,6 +9,8 @@ import {
 } from "@react-pdf/renderer";
 import { PDFDocument } from "pdf-lib";
 import { prisma } from "@/lib/prisma";
+import { readFile } from "fs/promises";
+import path from "path";
 
 type RouteContext = { params: Promise<{ token: string }> };
 
@@ -108,13 +110,27 @@ async function fetchUploadedInvitation(
   | { type: "pdf"; buffer: Uint8Array }
   | { type: "image"; buffer: Uint8Array; format: "png" | "jpg" }
 > {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error("Impossible de charger le fichier d'invitation uploadé.");
-  }
+  let rawBuffer: Uint8Array;
+  let contentType = "";
 
-  const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
-  const rawBuffer = toUint8Array(await response.arrayBuffer());
+  if (url.startsWith("/invitations/")) {
+    const filePath = path.join(process.cwd(), "public", url);
+    const buffer = await readFile(filePath);
+    rawBuffer = toUint8Array(buffer);
+    contentType =
+      url.endsWith(".pdf")
+        ? "application/pdf"
+        : url.endsWith(".png")
+          ? "image/png"
+          : "image/jpeg";
+  } else {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error("Impossible de charger le fichier d'invitation uploadé.");
+    }
+    contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
+    rawBuffer = toUint8Array(await response.arrayBuffer());
+  }
 
   const isPdf =
     contentType.includes("pdf") || url.toLowerCase().endsWith(".pdf");
