@@ -7,6 +7,7 @@ import {
   Users,
   Armchair,
   GlassWater,
+  Scan,
   LogOut,
   type LucideIcon,
 } from "lucide-react";
@@ -50,6 +51,11 @@ function buildMenu(eventId: string): MenuItem[] {
       label: "Boissons",
       href: `/events/${eventId}/drinks`,
       icon: GlassWater,
+    },
+    {
+      label: "Scanner",
+      href: `/events/${eventId}/scanner`,
+      icon: Scan,
     },
   ];
 }
