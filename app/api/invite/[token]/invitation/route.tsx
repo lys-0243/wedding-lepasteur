@@ -113,7 +113,7 @@ async function fetchUploadedInvitation(
   let rawBuffer: Uint8Array;
   let contentType = "";
 
-  if (url.startsWith("/invitations/")) {
+  if (url.startsWith("/")) {
     const filePath = path.join(process.cwd(), "public", url);
     const buffer = await readFile(filePath);
     rawBuffer = toUint8Array(buffer);
@@ -280,19 +280,15 @@ export async function GET(_req: Request, { params }: RouteContext) {
   const generatedBuffer = toUint8Array(await renderToBuffer(pdf));
   let finalBuffer = generatedBuffer;
 
-  if (guest.event.invitationFileUrl) {
-    const uploaded = await fetchUploadedInvitation(
-      guest.event.invitationFileUrl,
+  const uploaded = await fetchUploadedInvitation("/Invitation_Religieux_1.pdf");
+  if (uploaded.type === "pdf") {
+    finalBuffer = await concatenatePdfs(uploaded.buffer, generatedBuffer);
+  } else {
+    const uploadedAsPdf = await createPdfFromImage(
+      uploaded.buffer,
+      uploaded.format,
     );
-    if (uploaded.type === "pdf") {
-      finalBuffer = await concatenatePdfs(uploaded.buffer, generatedBuffer);
-    } else {
-      const uploadedAsPdf = await createPdfFromImage(
-        uploaded.buffer,
-        uploaded.format,
-      );
-      finalBuffer = await concatenatePdfs(uploadedAsPdf, generatedBuffer);
-    }
+    finalBuffer = await concatenatePdfs(uploadedAsPdf, generatedBuffer);
   }
 
   const filename = `invitation-${fullGuestName.replace(/\s+/g, "-").toLowerCase()}.pdf`;
