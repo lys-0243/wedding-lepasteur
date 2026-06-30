@@ -2,10 +2,21 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { TablesClient } from "@/components/tables/tables-client";
+import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
 
 type Props = { params: Promise<{ eventId: string }> };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { eventId } = await params;
+  const event = await prisma.event.findUnique({
+    where: { id: eventId },
+    select: { title: true },
+  });
+  if (!event) return {};
+  return { title: `Tables — ${event.title}` };
+}
 
 export default async function TablesPage({ params }: Props) {
   const user = await requireUser();

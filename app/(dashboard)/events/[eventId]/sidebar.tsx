@@ -89,7 +89,7 @@ export function Sidebar({
       )}
     >
       {/* Profile */}
-      <div className="flex flex-col items-center gap-2 border-b border-[#ffffff] px-6 py-7">
+      <div className="flex flex-col items-center gap-2 border-b border-[#ffffff] px-6 py-6">
         {user.avatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img

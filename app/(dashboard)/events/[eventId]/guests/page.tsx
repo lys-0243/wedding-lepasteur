@@ -2,12 +2,23 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { GuestsClient } from "@/components/guests/guests-client";
+import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
 
 type GuestsPageProps = {
   params: Promise<{ eventId: string }>;
 };
+
+export async function generateMetadata({ params }: GuestsPageProps): Promise<Metadata> {
+  const { eventId } = await params;
+  const event = await prisma.event.findUnique({
+    where: { id: eventId },
+    select: { title: true },
+  });
+  if (!event) return {};
+  return { title: `Invités — ${event.title}` };
+}
 
 export default async function GuestsPage({ params }: GuestsPageProps) {
   const user = await requireUser();

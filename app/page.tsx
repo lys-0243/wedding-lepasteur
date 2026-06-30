@@ -67,6 +67,9 @@ export default async function Home() {
       />
 
       <div className="relative w-full max-w-xl rounded-[1.8rem] border border-white/60 bg-white/65 p-3 shadow-[0_18px_60px_rgba(137,126,201,0.3)] backdrop-blur-sm sm:p-4">
+        <div className="flex justify-center mb-4 sm:mb-6">
+          <img src="/logo.png" alt="Le Pasteur" className="h-10 sm:h-12 w-auto" />
+        </div>
         <div className="rounded-3xl border border-[#DEE4EF] bg-[#F7F8FC] p-4 sm:p-5">
           <div className="mb-4 flex items-center justify-between gap-3">
             <h1 className="text-[1.45rem] font-semibold tracking-[-0.02em] text-slate-800 sm:text-[1.6rem]">

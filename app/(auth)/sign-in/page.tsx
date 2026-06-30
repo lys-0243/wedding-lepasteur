@@ -1,8 +1,13 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { SignInForm } from "./sign-in-form";
+import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Connexion",
+};
 
 export default async function SignInPage() {
   const user = await getCurrentUser();
@@ -21,7 +26,10 @@ export default async function SignInPage() {
           backgroundSize: "48px 48px",
         }}
       />
-      <SignInForm />
+      <div className="relative flex flex-col items-center gap-6">
+        <img src="/logo.png" alt="Le Pasteur" className="h-12 sm:h-14 w-auto" />
+        <SignInForm />
+      </div>
     </main>
   );
 }
