@@ -705,7 +705,7 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Import Excel */}
           <Button
             variant="outline"
@@ -714,7 +714,8 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
             className="gap-2 border-[#E8ECF4] text-slate-600 hover:bg-slate-50 cursor-pointer h-10 px-4 rounded-xl"
           >
             <Upload className="h-4 w-4" />
-            Importer Excel
+            <span className="hidden sm:inline">Importer Excel</span>
+            <span className="sm:hidden">Import</span>
           </Button>
 
           {/* Download all invitations */}
@@ -730,7 +731,8 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
             ) : (
               <Download className="h-4 w-4" />
             )}
-            Télécharger les invitations
+            <span className="hidden sm:inline">Télécharger</span>
+            <span className="sm:hidden">DL invitations</span>
           </Button>
 
           {/* Export Excel */}
@@ -741,7 +743,8 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
             className="gap-2 border-[#E8ECF4] text-slate-600 hover:bg-slate-50 cursor-pointer h-10 px-4 rounded-xl"
           >
             <Download className="h-4 w-4" />
-            Exporter Excel
+            <span className="hidden sm:inline">Exporter Excel</span>
+            <span className="sm:hidden">Export</span>
           </Button>
 
           {/* Add Guest */}
@@ -751,7 +754,7 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
             className="gap-2 bg-[#1E5FF5] text-white hover:bg-[#154ED0] cursor-pointer h-10 px-4 rounded-xl"
           >
             <Plus className="h-4 w-4" />
-            Ajouter un invité
+            Ajouter
           </Button>
         </div>
       </div>
@@ -775,8 +778,8 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
       </div>
 
       {/* ── Guest List Table ──────────────────────────────────────────────── */}
-      <div className="mt-4 overflow-hidden rounded-2xl border border-[#E8ECF4] bg-white shadow-sm">
-        <div className="grid grid-cols-[1.5fr_1.5fr_1fr_1.2fr_140px] items-center border-b border-[#E8ECF4] bg-slate-50/60 px-5 py-3 text-[0.7rem] font-bold uppercase tracking-widest text-slate-400">
+      <div className="mt-4 overflow-x-auto rounded-2xl border border-[#E8ECF4] bg-white shadow-sm">
+        <div className="min-w-[650px] grid grid-cols-[1.5fr_1.5fr_1fr_1.2fr_140px] items-center border-b border-[#E8ECF4] bg-slate-50/60 px-5 py-3 text-[0.7rem] font-bold uppercase tracking-widest text-slate-400">
           <span>Nom</span>
           <span>Contact</span>
           <span className="text-center">Type</span>
@@ -821,7 +824,7 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
               return (
                 <li
                   key={guest.id}
-                  className={`grid grid-cols-[1.5fr_1.5fr_1fr_1.2fr_140px] items-center gap-2 px-5 py-3.5 transition-colors hover:bg-slate-50/60 ${
+                  className={`min-w-[650px] grid grid-cols-[1.5fr_1.5fr_1fr_1.2fr_140px] items-center gap-2 px-5 py-3.5 transition-colors hover:bg-slate-50/60 ${
                     i !== filteredGuests.length - 1
                       ? "border-b border-[#E8ECF4]"
                       : ""

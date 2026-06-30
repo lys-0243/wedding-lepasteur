@@ -354,7 +354,7 @@ export function TablesClient({ eventId, initialTables }: Props) {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Import Excel Button */}
           <Button
             variant="outline"
@@ -363,7 +363,8 @@ export function TablesClient({ eventId, initialTables }: Props) {
             className="gap-2 border-[#E8ECF4] text-slate-600 hover:bg-slate-50 cursor-pointer h-10 px-4 rounded-xl"
           >
             <Upload className="h-4 w-4" />
-            Importer Excel
+            <span className="hidden sm:inline">Importer Excel</span>
+            <span className="sm:hidden">Import</span>
           </Button>
 
           {/* Export Excel Button */}
@@ -374,7 +375,8 @@ export function TablesClient({ eventId, initialTables }: Props) {
             className="gap-2 border-[#E8ECF4] text-slate-600 hover:bg-slate-50 cursor-pointer h-10 px-4 rounded-xl"
           >
             <Download className="h-4 w-4" />
-            Exporter Excel
+            <span className="hidden sm:inline">Exporter Excel</span>
+            <span className="sm:hidden">Export</span>
           </Button>
 
           {/* Add table */}
@@ -384,7 +386,7 @@ export function TablesClient({ eventId, initialTables }: Props) {
             className="gap-2 bg-[#1E5FF5] text-white hover:bg-[#154ED0] cursor-pointer h-10 px-4 rounded-xl"
           >
             <Plus className="h-4 w-4" />
-            Ajouter une table
+            Ajouter
           </Button>
         </div>
       </div>
@@ -408,9 +410,9 @@ export function TablesClient({ eventId, initialTables }: Props) {
       </div>
 
       {/* ── Table list ────────────────────────────────────────────────────── */}
-      <div className="mt-4 overflow-hidden rounded-2xl border border-[#E8ECF4] bg-white shadow-sm">
+      <div className="mt-4 overflow-x-auto rounded-2xl border border-[#E8ECF4] bg-white shadow-sm">
         {/* Table head */}
-        <div className="grid grid-cols-[auto_1fr_120px_100px_140px] items-center border-b border-[#E8ECF4] bg-slate-50/60 px-5 py-3 text-[0.7rem] font-bold uppercase tracking-widest text-slate-400">
+        <div className="min-w-[600px] grid grid-cols-[auto_1fr_120px_100px_140px] items-center border-b border-[#E8ECF4] bg-slate-50/60 px-5 py-3 text-[0.7rem] font-bold uppercase tracking-widest text-slate-400">
           <span className="w-8" />
           <span>Nom</span>
           <span className="text-center">Capacité</span>
@@ -450,7 +452,7 @@ export function TablesClient({ eventId, initialTables }: Props) {
               return (
                 <li
                   key={table.id}
-                  className={`grid grid-cols-[auto_1fr_120px_100px_140px] items-center gap-2 px-5 py-3.5 transition-colors hover:bg-slate-50/60 ${
+                  className={`min-w-[600px] grid grid-cols-[auto_1fr_120px_100px_140px] items-center gap-2 px-5 py-3.5 transition-colors hover:bg-slate-50/60 ${
                     i !== filtered.length - 1 ? "border-b border-[#E8ECF4]" : ""
                   }`}
                 >
@@ -715,7 +717,7 @@ export function TablesClient({ eventId, initialTables }: Props) {
 
       {/* ── Import dialog ───────────────────────────────────────────────────── */}
       <Dialog open={importOpen} onOpenChange={(o) => { if (!o) { setImportOpen(false); clearUploadedFile(); } }}>
-        <DialogContent className="w-[70vw] max-w-none rounded-[24px] bg-white p-6 shadow-2xl border-none gap-0 overflow-hidden outline-none">
+        <DialogContent className="max-w-lg w-full rounded-[24px] bg-white p-6 shadow-2xl border-none gap-0 overflow-hidden outline-none">
           <DialogHeader className="pb-4 border-b border-[#E8ECF4] mb-4">
             <DialogTitle className="text-[18px] font-bold text-slate-800">
               Importer des tables
