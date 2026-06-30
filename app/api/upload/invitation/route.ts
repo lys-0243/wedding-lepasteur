@@ -1,12 +1,23 @@
 import { NextResponse } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
+import crypto from "crypto";
+
+const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+const API_KEY = process.env.CLOUDINARY_API_KEY;
+const API_SECRET = process.env.CLOUDINARY_API_SECRET;
 
 const MAX_SIZE = 5 * 1024 * 1024;
 const ALLOWED_TYPES = [".pdf", ".png", ".jpg", ".jpeg"];
 
 export async function POST(req: Request) {
   try {
+    if (!CLOUD_NAME || !API_KEY || !API_SECRET) {
+      console.error("Cloudinary credentials manquantes.");
+      return NextResponse.json(
+        { error: "Erreur de configuration du serveur." },
+        { status: 500 },
+      );
+    }
+
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     const eventId = formData.get("eventId") as string | null;
@@ -25,23 +36,44 @@ export async function POST(req: Request) {
       );
     }
 
-    const ext = path.extname(file.name).toLowerCase();
-    if (!ALLOWED_TYPES.includes(ext)) {
+    const name = file.name.toLowerCase();
+    const isAllowed = ALLOWED_TYPES.some((t) => name.endsWith(t));
+    if (!isAllowed) {
       return NextResponse.json(
         { error: "Seuls les fichiers PDF, PNG et JPEG sont acceptés." },
         { status: 400 },
       );
     }
 
-    const dir = path.join(process.cwd(), "public", "invitations");
-    await mkdir(dir, { recursive: true });
+    const timestamp = Math.round(Date.now() / 1000);
+    const folder = "lepasteur/invitations";
 
-    const uniqueName = `${eventId}-${Date.now()}-${file.name}`;
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const filePath = path.join(dir, uniqueName);
-    await writeFile(filePath, buffer);
+    const toSign = `folder=${folder}&timestamp=${timestamp}${API_SECRET}`;
+    const signature = crypto.createHash("sha1").update(toSign).digest("hex");
 
-    return NextResponse.json({ url: `/invitations/${uniqueName}` });
+    const body = new FormData();
+    body.append("file", file);
+    body.append("folder", folder);
+    body.append("timestamp", String(timestamp));
+    body.append("api_key", API_KEY);
+    body.append("signature", signature);
+
+    const res = await fetch(
+      `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
+      { method: "POST", body },
+    );
+
+    const data = await res.json();
+
+    if (!res.ok || !data.secure_url) {
+      console.error("Cloudinary upload error:", data);
+      return NextResponse.json(
+        { error: "Erreur lors de l'upload du fichier." },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json({ url: data.secure_url });
   } catch (err) {
     console.error("Upload invitation error:", err);
     return NextResponse.json(
