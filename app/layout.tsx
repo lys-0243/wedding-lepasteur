@@ -9,9 +9,16 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Le Pasteur — Gestion de Mariage",
+  title: {
+    template: "%s — Le Pasteur",
+    default: "Le Pasteur",
+  },
   description:
     "Plateforme de gestion de mariage : invités, plan de table, boissons et invitations",
+  icons: [
+    { rel: "icon", url: "/logo_icon.png", type: "image/png" },
+    { rel: "apple-touch-icon", url: "/logo_icon.png" },
+  ],
 };
 
 export default function RootLayout({

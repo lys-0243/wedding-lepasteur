@@ -1,6 +1,19 @@
 import { EditEventForm } from "./edit-event-form";
 import { prisma } from "@/lib/prisma";
 import { updateEventAction } from "../actions";
+import type { Metadata } from "next";
+
+type EditPageProps = { params: Promise<{ eventId: string }> };
+
+export async function generateMetadata({ params }: EditPageProps): Promise<Metadata> {
+  const { eventId } = await params;
+  const event = await prisma.event.findUnique({
+    where: { id: eventId },
+    select: { title: true },
+  });
+  if (!event) return {};
+  return { title: `Modifier — ${event.title}` };
+}
 
 export default async function EditEventPage({ params }: { params: any }) {
   // `params` can sometimes be a Promise or undefined depending on how the layout was invoked;

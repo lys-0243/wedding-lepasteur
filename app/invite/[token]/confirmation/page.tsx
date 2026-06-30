@@ -439,7 +439,9 @@ export default function InviteConfirmationPage({
                       }`}
                     >
                       <span className="inline-flex items-center gap-2">
-                        {drink.isAlcoholic ? (
+                        {drink.imageUrl ? (
+                          <img src={drink.imageUrl} alt={drink.name} className="h-6 w-6 rounded-full object-cover" />
+                        ) : drink.isAlcoholic ? (
                           <Wine className="h-4 w-4" />
                         ) : (
                           <GlassWater className="h-4 w-4" />

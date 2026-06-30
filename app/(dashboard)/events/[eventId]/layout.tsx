@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Sidebar, MobileNavSheet } from "./sidebar";
+import type { Metadata } from "next";
 
 type LayoutProps = {
   children: React.ReactNode;
@@ -9,6 +10,16 @@ type LayoutProps = {
 };
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({ params }: LayoutProps): Promise<Metadata> {
+  const { eventId } = await params;
+  const event = await prisma.event.findUnique({
+    where: { id: eventId },
+    select: { title: true },
+  });
+  if (!event) return {};
+  return { title: event.title };
+}
 
 export default async function EventLayout({ children, params }: LayoutProps) {
   const user = await requireUser();

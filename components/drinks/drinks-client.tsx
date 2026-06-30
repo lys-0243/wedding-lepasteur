@@ -338,7 +338,9 @@ export function DrinksClient({ eventId, initialDrinks, catalog }: Props) {
                 className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 hover:bg-red-50 hover:text-red-700 cursor-pointer"
                 title="Retirer de l'événement"
               >
-                {drink.isAlcoholic ? (
+                {drink.imageUrl ? (
+                  <img src={drink.imageUrl} alt={drink.name} className="h-5 w-5 rounded-full object-cover" />
+                ) : drink.isAlcoholic ? (
                   <Wine className="h-3.5 w-3.5" />
                 ) : (
                   <GlassWater className="h-3.5 w-3.5" />
@@ -402,7 +404,9 @@ export function DrinksClient({ eventId, initialDrinks, catalog }: Props) {
                 }`}
               >
                 <span className="inline-flex items-center gap-2">
-                  {drink.isAlcoholic ? (
+                  {drink.imageUrl ? (
+                    <img src={drink.imageUrl} alt={drink.name} className="h-6 w-6 rounded-full object-cover" />
+                  ) : drink.isAlcoholic ? (
                     <Wine className="h-4 w-4" />
                   ) : (
                     <GlassWater className="h-4 w-4" />
