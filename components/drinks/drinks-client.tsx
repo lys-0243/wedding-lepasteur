@@ -363,7 +363,7 @@ export function DrinksClient({ eventId, initialDrinks, catalog }: Props) {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Rechercher..."
-                className="h-9 w-52 pl-9"
+                className="h-9 w-full sm:w-52 pl-9"
               />
             </div>
             <select

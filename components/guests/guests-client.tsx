@@ -690,7 +690,7 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Import Excel */}
           <Button
             variant="outline"
@@ -699,7 +699,8 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
             className="gap-2 border-[#E8ECF4] text-slate-600 hover:bg-slate-50 cursor-pointer h-10 px-4 rounded-xl"
           >
             <Upload className="h-4 w-4" />
-            Importer Excel
+            <span className="hidden sm:inline">Importer Excel</span>
+            <span className="sm:hidden">Import</span>
           </Button>
 
           {/* Export Excel */}
@@ -710,7 +711,8 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
             className="gap-2 border-[#E8ECF4] text-slate-600 hover:bg-slate-50 cursor-pointer h-10 px-4 rounded-xl"
           >
             <Download className="h-4 w-4" />
-            Exporter Excel
+            <span className="hidden sm:inline">Exporter Excel</span>
+            <span className="sm:hidden">Export</span>
           </Button>
 
           {/* Ajouter un invité */}
@@ -720,7 +722,7 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
             className="gap-2 bg-[#1E5FF5] text-white hover:bg-[#154ED0] cursor-pointer h-10 px-4 rounded-xl"
           >
             <Plus className="h-4 w-4" />
-            Ajouter un invité
+            Ajouter
           </Button>
         </div>
       </div>
@@ -767,9 +769,9 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
       </div>
 
       {/* ── List ────────────────────────────────────────────────────────── */}
-      <div className="mt-4 overflow-hidden rounded-2xl border border-[#E8ECF4] bg-white shadow-sm">
+      <div className="mt-4 overflow-x-auto rounded-2xl border border-[#E8ECF4] bg-white shadow-sm">
         {/* Table head */}
-        <div className="grid grid-cols-[2fr_1fr_1fr_1fr_100px] items-center border-b border-[#E8ECF4] bg-slate-50/60 px-5 py-3 text-[0.7rem] font-bold uppercase tracking-widest text-slate-400">
+        <div className="min-w-[680px] grid grid-cols-[2fr_1fr_1fr_1fr_100px] items-center border-b border-[#E8ECF4] bg-slate-50/60 px-5 py-3 text-[0.7rem] font-bold uppercase tracking-widest text-slate-400">
           <span>Invité</span>
           <span>Type</span>
           <span>Table</span>
@@ -793,7 +795,7 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
             {filtered.map((guest, i) => (
               <li
                 key={guest.id}
-                className={`grid grid-cols-[2fr_1fr_1fr_1fr_100px] items-center gap-2 px-5 py-3.5 transition-colors hover:bg-slate-50/60 ${
+                className={`min-w-[680px] grid grid-cols-[2fr_1fr_1fr_1fr_100px] items-center gap-2 px-5 py-3.5 transition-colors hover:bg-slate-50/60 ${
                   i !== filtered.length - 1 ? "border-b border-[#E8ECF4]" : ""
                 }`}
               >

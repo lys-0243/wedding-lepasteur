@@ -180,7 +180,7 @@ export function ScannerClient({ eventId }: ScannerProps) {
         ref={containerRef}
         id="scanner-container"
         className="overflow-hidden rounded-2xl bg-black"
-        style={{ minHeight: 350 }}
+        style={{ minHeight: "50vh" }}
       />
 
       {!scanning && !cameraError && (
