@@ -3,8 +3,6 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
-import { unlink } from "fs/promises";
-import path from "path";
 
 function asOptionalText(value: FormDataEntryValue | null) {
   if (typeof value !== "string") {
@@ -101,12 +99,6 @@ export async function updateEventAction(formData: FormData) {
           : { deleteMany: {} },
     },
   });
-
-  const oldUrl = existing.invitationFileUrl;
-  if (oldUrl && oldUrl.startsWith("/invitations/") && oldUrl !== newInvitationFileUrl) {
-    const filePath = path.join(process.cwd(), "public", oldUrl);
-    await unlink(filePath).catch(() => {});
-  }
 
   redirect(`/events/${eventId}`);
 }
