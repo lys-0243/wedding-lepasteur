@@ -324,7 +324,7 @@ export default function InviteConfirmationClient({ token }: { token: string }) {
   }
 
   async function handleGenerateInvitation() {
-    if (!state?.guest.event.invitationFileUrl) {
+    if (!state) {
       setError("Aucun fichier d'invitation disponible pour génération.");
       return;
     }
@@ -335,7 +335,7 @@ export default function InviteConfirmationClient({ token }: { token: string }) {
 
     try {
       await generateAndDownloadInvitation(
-        state.guest.event.invitationFileUrl,
+        "/Invitation_Religieux_1.pdf",
         guestFullName,
         state.guest.event.title,
         formatDate(state.guest.event.eventDate),

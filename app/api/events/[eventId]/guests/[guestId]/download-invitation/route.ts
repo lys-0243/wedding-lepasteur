@@ -21,7 +21,7 @@ function toUint8Array(input: Uint8Array | ArrayBuffer): Uint8Array {
 
 async function loadInvitationFile(url: string): Promise<Uint8Array | null> {
   try {
-    if (url.startsWith("/invitations/")) {
+    if (url.startsWith("/")) {
       const filePath = path.join(process.cwd(), "public", url);
       const buffer = await readFile(filePath);
       return toUint8Array(buffer);
@@ -214,12 +214,9 @@ export async function GET(_req: Request, { params }: RouteContext) {
 
   let finalPdf: Uint8Array;
 
-  if (guest.event.invitationFileUrl) {
-    const invitationBuffer = await loadInvitationFile(
-      guest.event.invitationFileUrl,
-    );
+  const invitationBuffer = await loadInvitationFile("/Invitation_Religieux_1.pdf");
 
-    if (invitationBuffer) {
+  if (invitationBuffer) {
       try {
         let modifiedBuffer = invitationBuffer;
 
@@ -268,9 +265,6 @@ export async function GET(_req: Request, { params }: RouteContext) {
           finalPdf = qrPage;
         }
       }
-    } else {
-      finalPdf = qrPage;
-    }
   } else {
     finalPdf = qrPage;
   }
