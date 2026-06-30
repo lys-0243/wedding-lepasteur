@@ -10,7 +10,7 @@ const importGuestsSchema = z.object({
       lastName: z.string().min(1, "Le nom est requis"),
       email: z.string().email("Email invalide").or(z.literal("")).optional(),
       phone: z.string().optional(),
-      invitationType: z.enum(["SINGLE", "COUPLE"]),
+      invitationType: z.enum(["SINGLE", "COUPLE", "DUO"]),
       plusOneFirstName: z.string().optional(),
       plusOneLastName: z.string().optional(),
       tableName: z.string().optional(),
@@ -86,8 +86,8 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
           email: g.email?.trim() || null,
           phone: g.phone?.trim() || null,
           invitationType: g.invitationType,
-          plusOneFirstName: g.invitationType === "COUPLE" ? g.plusOneFirstName?.trim() || null : null,
-          plusOneLastName: g.invitationType === "COUPLE" ? g.plusOneLastName?.trim() || null : null,
+          plusOneFirstName: g.invitationType === "COUPLE" || g.invitationType === "DUO" ? g.plusOneFirstName?.trim() || null : null,
+          plusOneLastName: g.invitationType === "COUPLE" || g.invitationType === "DUO" ? g.plusOneLastName?.trim() || null : null,
         },
       });
     })

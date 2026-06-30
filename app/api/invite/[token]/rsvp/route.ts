@@ -39,7 +39,7 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
 
   const payload = parsed.data;
   const plusOneStatus =
-    guest.invitationType === "COUPLE"
+    guest.invitationType === "COUPLE" || guest.invitationType === "DUO"
       ? (payload.plusOneRsvpStatus ?? "PENDING")
       : null;
 

@@ -33,7 +33,7 @@ export async function GET(_req: NextRequest, { params }: RouteContext) {
     name: t.name,
     capacity: t.capacity,
     _count: {
-      guests: t.guests.reduce((sum, g) => sum + (g.invitationType === "COUPLE" ? 2 : 1), 0),
+      guests: t.guests.reduce((sum, g) => sum + (g.invitationType === "COUPLE" || g.invitationType === "DUO" ? 2 : 1), 0),
     },
   }));
 
