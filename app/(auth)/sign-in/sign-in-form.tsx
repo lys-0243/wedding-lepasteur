@@ -28,10 +28,7 @@ export function SignInForm() {
     <div className="relative w-full max-w-md rounded-[1.8rem] border border-white/60 bg-white/65 p-3 shadow-[0_18px_60px_rgba(137,126,201,0.3)] backdrop-blur-sm sm:p-4">
       <div className="rounded-3xl border border-[#DEE4EF] bg-[#F7F8FC] p-5 sm:p-6">
         <div className="mb-6 text-center">
-          <h1 className="text-[1.45rem] font-semibold tracking-[-0.02em] text-slate-800 sm:text-[1.6rem]">
-            Le Pasteur
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-slate-500">
             Connectez-vous pour gérer votre mariage
           </p>
         </div>

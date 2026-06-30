@@ -96,7 +96,7 @@ export default async function EventDashboardPage({ params }: EventPageProps) {
             <img
               src={event.profileImageUrl}
               alt={event.title}
-              className="h-24 w-24 rounded-full object-cover ring-4 ring-white shadow-lg lg:h-38 lg:w-38"
+              className="h-24 w-24 rounded-full object-cover ring-4 ring-white shadow-lg lg:h-36 lg:w-36"
             />
           ) : (
             <div className="flex h-24 w-24 items-center justify-center rounded-full bg-linear-to-br from-[#534AB7] to-[#AF8BFF] ring-4 ring-white shadow-lg lg:h-28 lg:w-28">

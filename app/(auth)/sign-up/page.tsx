@@ -1,8 +1,13 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { SignUpForm } from "./sign-up-form";
+import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Inscription",
+};
 
 export default async function SignUpPage() {
   const user = await getCurrentUser();
@@ -21,7 +26,10 @@ export default async function SignUpPage() {
           backgroundSize: "48px 48px",
         }}
       />
-      <SignUpForm />
+      <div className="relative flex flex-col items-center gap-6">
+        <img src="/logo.png" alt="Le Pasteur" className="h-12 sm:h-14 w-auto" />
+        <SignUpForm />
+      </div>
     </main>
   );
 }
