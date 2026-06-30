@@ -280,9 +280,7 @@ export async function GET(_req: Request, { params }: RouteContext) {
   const generatedBuffer = toUint8Array(await renderToBuffer(pdf));
   let finalBuffer = generatedBuffer;
 
-  const invitationFileUrl =
-    guest.event.invitationFileUrl ?? "/Invitation_Religieux_1.pdf";
-  const uploaded = await fetchUploadedInvitation(invitationFileUrl);
+  const uploaded = await fetchUploadedInvitation("/Invitation_Religieux_1.pdf");
   if (uploaded.type === "pdf") {
     finalBuffer = await concatenatePdfs(uploaded.buffer, generatedBuffer);
   } else {

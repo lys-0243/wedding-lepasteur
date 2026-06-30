@@ -214,9 +214,7 @@ export async function GET(_req: Request, { params }: RouteContext) {
 
   let finalPdf: Uint8Array;
 
-  const invitationFileUrl =
-    guest.event.invitationFileUrl ?? "/Invitation_Religieux_1.pdf";
-  const invitationBuffer = await loadInvitationFile(invitationFileUrl);
+  const invitationBuffer = await loadInvitationFile("/Invitation_Religieux_1.pdf");
 
   if (invitationBuffer) {
       try {
