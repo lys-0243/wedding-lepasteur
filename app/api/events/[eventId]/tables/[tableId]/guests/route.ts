@@ -8,7 +8,7 @@ const createGuestSchema = z.object({
   lastName: z.string().min(1, "Le nom est requis"),
   email: z.string().email("Email invalide").or(z.literal("")).optional(),
   phone: z.string().optional(),
-  invitationType: z.enum(["SINGLE", "COUPLE"]),
+  invitationType: z.enum(["SINGLE", "COUPLE", "DUO"]),
   plusOneFirstName: z.string().optional(),
   plusOneLastName: z.string().optional(),
 });
@@ -67,10 +67,10 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
     if (!guest) return NextResponse.json({ error: "Invité introuvable" }, { status: 404 });
 
     const occupiedSeats = table.guests.reduce(
-      (sum, g) => sum + (g.invitationType === "COUPLE" ? 2 : 1),
+      (sum, g) => sum + (g.invitationType === "COUPLE" || g.invitationType === "DUO" ? 2 : 1),
       0
     );
-    const guestSeats = guest.invitationType === "COUPLE" ? 2 : 1;
+    const guestSeats = guest.invitationType === "COUPLE" || guest.invitationType === "DUO" ? 2 : 1;
 
     if (occupiedSeats + guestSeats > table.capacity) {
       return NextResponse.json(
@@ -93,10 +93,10 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
   }
 
   const occupiedSeats = table.guests.reduce(
-    (sum, g) => sum + (g.invitationType === "COUPLE" ? 2 : 1),
+    (sum, g) => sum + (g.invitationType === "COUPLE" || g.invitationType === "DUO" ? 2 : 1),
     0
   );
-  const newGuestSeats = parsed.data.invitationType === "COUPLE" ? 2 : 1;
+  const newGuestSeats = parsed.data.invitationType === "COUPLE" || parsed.data.invitationType === "DUO" ? 2 : 1;
 
   if (occupiedSeats + newGuestSeats > table.capacity) {
     return NextResponse.json(
@@ -120,8 +120,8 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
       email: emailVal,
       phone: data.phone?.trim() || null,
       invitationType: data.invitationType,
-      plusOneFirstName: data.invitationType === "COUPLE" ? data.plusOneFirstName?.trim() || null : null,
-      plusOneLastName: data.invitationType === "COUPLE" ? data.plusOneLastName?.trim() || null : null,
+      plusOneFirstName: data.invitationType === "COUPLE" || data.invitationType === "DUO" ? data.plusOneFirstName?.trim() || null : null,
+      plusOneLastName: data.invitationType === "COUPLE" || data.invitationType === "DUO" ? data.plusOneLastName?.trim() || null : null,
     },
   });
 
