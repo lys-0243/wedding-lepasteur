@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useTransition } from "react";
+import Link from "next/link";
 import {
   Users,
   Search,
@@ -835,10 +836,13 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
                 {/* Table */}
                 <div>
                   {guest.table ? (
-                    <span className="inline-flex items-center gap-1 text-xs font-medium text-[#1E5FF5] bg-blue-50 border border-blue-200 rounded-lg px-2 py-0.5 truncate max-w-[120px]">
+                    <Link
+                      href={`/events/${eventId}/tables/${guest.table.id}`}
+                      className="inline-flex items-center gap-1 text-xs font-medium text-[#1E5FF5] bg-blue-50 border border-blue-200 rounded-lg px-2 py-0.5 truncate max-w-[120px] hover:bg-blue-100 transition-colors"
+                    >
                       <Armchair className="h-2.5 w-2.5 shrink-0" />
                       {guest.table.name}
-                    </span>
+                    </Link>
                   ) : (
                     <span className="text-xs text-slate-400">—</span>
                   )}
@@ -988,10 +992,13 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
                     Table
                   </p>
                   {viewGuest.table ? (
-                    <span className="inline-flex items-center gap-1 text-sm font-semibold text-[#1E5FF5]">
+                    <Link
+                      href={`/events/${eventId}/tables/${viewGuest.table.id}`}
+                      className="inline-flex items-center gap-1 text-sm font-semibold text-[#1E5FF5] hover:underline"
+                    >
                       <Armchair className="h-3.5 w-3.5 shrink-0" />
                       {viewGuest.table.name}
-                    </span>
+                    </Link>
                   ) : (
                     <span className="text-sm text-slate-400 italic">
                       Non assigné
