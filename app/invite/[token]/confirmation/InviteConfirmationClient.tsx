@@ -335,7 +335,7 @@ export default function InviteConfirmationClient({ token }: { token: string }) {
 
     try {
       await generateAndDownloadInvitation(
-        state.guest.event.invitationFileUrl,
+        state.guest.event.invitationFileUrl || "/Invitation_Religieux_1.pdf",
         guestFullName,
         state.guest.event.title,
         formatDate(state.guest.event.eventDate),
