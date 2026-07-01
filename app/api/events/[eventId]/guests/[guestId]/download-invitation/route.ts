@@ -60,7 +60,10 @@ async function replacePlaceholders(
 
     const drawX =
       ph.align === "center"
-        ? Math.max(0, (A4_WIDTH - font.widthOfTextAtSize(value, ph.fontSize)) / 2)
+        ? Math.max(
+            0,
+            (A4_WIDTH - font.widthOfTextAtSize(value, ph.fontSize)) / 2,
+          )
         : (ph.x ?? 0);
 
     page.drawText(value, {
@@ -214,57 +217,71 @@ export async function GET(_req: Request, { params }: RouteContext) {
 
   let finalPdf: Uint8Array;
 
-  const invitationBuffer = await loadInvitationFile("/Invitation_Religieux_1.pdf");
+  const invitationBuffer = await loadInvitationFile(
+    "/Invitation_Religieux_Syl_The.pdf",
+  );
 
   if (invitationBuffer) {
+    try {
+      let modifiedBuffer = invitationBuffer;
+
       try {
-        let modifiedBuffer = invitationBuffer;
-
-        try {
-          const doc = await PDFDocument.load(invitationBuffer);
-          const placeholders: Placeholder[] = [
-            { pageIndex: 1, type: "NOM" as const, y: 577, fontSize: 30, align: "center" },
-            { pageIndex: 1, type: "TABLE" as const, x: 258, y: 378, fontSize: 30 },
-          ];
-          await replacePlaceholders(doc, placeholders, displayName, tableName);
-          modifiedBuffer = toUint8Array(await doc.save());
-        } catch {
-          // pdf-lib failed; proceed with original buffer
-        }
-
-        const invitationDoc = await PDFDocument.load(modifiedBuffer);
-        const isPdf = invitationDoc.getPageCount() > 0;
-        if (isPdf) {
-          finalPdf = await concatenatePdfs(modifiedBuffer, qrPage);
-        } else {
-          finalPdf = qrPage;
-        }
+        const doc = await PDFDocument.load(invitationBuffer);
+        const placeholders: Placeholder[] = [
+          {
+            pageIndex: 1,
+            type: "NOM" as const,
+            y: 577,
+            fontSize: 30,
+            align: "center",
+          },
+          {
+            pageIndex: 1,
+            type: "TABLE" as const,
+            x: 258,
+            y: 378,
+            fontSize: 30,
+          },
+        ];
+        await replacePlaceholders(doc, placeholders, displayName, tableName);
+        modifiedBuffer = toUint8Array(await doc.save());
       } catch {
-        try {
-          const imgPdf = await PDFDocument.create();
-          const imgPage = imgPdf.addPage([A4_WIDTH, A4_HEIGHT]);
-          let embedded: any;
-          try {
-            embedded = await imgPdf.embedJpg(invitationBuffer);
-          } catch {
-            embedded = await imgPdf.embedPng(invitationBuffer);
-          }
-          const { width, height } = embedded.scaleToFit(
-            A4_WIDTH - 64,
-            A4_HEIGHT - 64,
-          );
-          imgPage.drawImage(embedded, {
-            x: 32,
-            y: A4_HEIGHT - height - 32,
-            width,
-            height,
-          });
-          const imgPdfBytes = toUint8Array(await imgPdf.save());
-          finalPdf = await concatenatePdfs(imgPdfBytes, qrPage);
-        } catch {
-          finalPdf = qrPage;
-        }
+        // pdf-lib failed; proceed with original buffer
       }
+
+      const invitationDoc = await PDFDocument.load(modifiedBuffer);
+      const isPdf = invitationDoc.getPageCount() > 0;
+      if (isPdf) {
+        finalPdf = await concatenatePdfs(modifiedBuffer, qrPage);
+      } else {
+        finalPdf = qrPage;
+      }
+    } catch {
+      try {
+        const imgPdf = await PDFDocument.create();
+        const imgPage = imgPdf.addPage([A4_WIDTH, A4_HEIGHT]);
+        let embedded: any;
+        try {
+          embedded = await imgPdf.embedJpg(invitationBuffer);
+        } catch {
+          embedded = await imgPdf.embedPng(invitationBuffer);
+        }
+        const { width, height } = embedded.scaleToFit(
+          A4_WIDTH - 64,
+          A4_HEIGHT - 64,
+        );
+        imgPage.drawImage(embedded, {
+          x: 32,
+          y: A4_HEIGHT - height - 32,
+          width,
+          height,
+        });
+        const imgPdfBytes = toUint8Array(await imgPdf.save());
+        finalPdf = await concatenatePdfs(imgPdfBytes, qrPage);
+      } catch {
+        finalPdf = qrPage;
+      }
+    }
   } else {
     finalPdf = qrPage;
   }

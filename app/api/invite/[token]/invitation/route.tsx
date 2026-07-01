@@ -117,12 +117,11 @@ async function fetchUploadedInvitation(
     const filePath = path.join(process.cwd(), "public", url);
     const buffer = await readFile(filePath);
     rawBuffer = toUint8Array(buffer);
-    contentType =
-      url.endsWith(".pdf")
-        ? "application/pdf"
-        : url.endsWith(".png")
-          ? "image/png"
-          : "image/jpeg";
+    contentType = url.endsWith(".pdf")
+      ? "application/pdf"
+      : url.endsWith(".png")
+        ? "image/png"
+        : "image/jpeg";
   } else {
     const response = await fetch(url);
     if (!response.ok) {
@@ -280,7 +279,9 @@ export async function GET(_req: Request, { params }: RouteContext) {
   const generatedBuffer = toUint8Array(await renderToBuffer(pdf));
   let finalBuffer = generatedBuffer;
 
-  const uploaded = await fetchUploadedInvitation("/Invitation_Religieux_1.pdf");
+  const uploaded = await fetchUploadedInvitation(
+    "/Invitation_Religieux_Syl_The.pdf",
+  );
   if (uploaded.type === "pdf") {
     finalBuffer = await concatenatePdfs(uploaded.buffer, generatedBuffer);
   } else {
