@@ -76,12 +76,18 @@ async function generateAndDownloadInvitation(
   }
 
   const arrayBuffer = await response.arrayBuffer();
-  const contentType = (response.headers.get("content-type") || "").toLowerCase();
+  const contentType = (
+    response.headers.get("content-type") || ""
+  ).toLowerCase();
   const { PDFDocument, rgb, StandardFonts } = await import("pdf-lib");
 
   let pdfDoc;
-  const isPdf = contentType.includes("pdf") || invitationFileUrl.toLowerCase().endsWith(".pdf");
-  const isPng = contentType.includes("png") || invitationFileUrl.toLowerCase().endsWith(".png");
+  const isPdf =
+    contentType.includes("pdf") ||
+    invitationFileUrl.toLowerCase().endsWith(".pdf");
+  const isPng =
+    contentType.includes("png") ||
+    invitationFileUrl.toLowerCase().endsWith(".png");
   const isJpg =
     contentType.includes("jpeg") ||
     contentType.includes("jpg") ||
@@ -118,7 +124,10 @@ async function generateAndDownloadInvitation(
       const pageWidth = Math.min(image.width, A4_WIDTH);
       const pageHeight = Math.min(image.height, A4_HEIGHT);
       const page = pdfDoc.addPage([pageWidth, pageHeight]);
-      const { width, height } = image.scaleToFit(page.getWidth(), page.getHeight());
+      const { width, height } = image.scaleToFit(
+        page.getWidth(),
+        page.getHeight(),
+      );
       page.drawImage(image, {
         x: 0,
         y: page.getHeight() - height,
@@ -126,7 +135,9 @@ async function generateAndDownloadInvitation(
         height,
       });
     } else if (!isPdf) {
-      throw new Error("Le fichier d'invitation uploadé n'est pas un PDF ou une image supportée.");
+      throw new Error(
+        "Le fichier d'invitation uploadé n'est pas un PDF ou une image supportée.",
+      );
     }
   }
 
@@ -335,7 +346,7 @@ export default function InviteConfirmationClient({ token }: { token: string }) {
 
     try {
       await generateAndDownloadInvitation(
-        "/Invitation_Religieux_1.pdf",
+        "/Invitation_Religieux_Syl_The.pdf",
         guestFullName,
         state.guest.event.title,
         formatDate(state.guest.event.eventDate),
@@ -465,7 +476,11 @@ export default function InviteConfirmationClient({ token }: { token: string }) {
                 >
                   <span className="inline-flex items-center gap-2">
                     {drink.imageUrl ? (
-                      <img src={drink.imageUrl} alt={drink.name} className="h-6 w-6 rounded-full object-cover" />
+                      <img
+                        src={drink.imageUrl}
+                        alt={drink.name}
+                        className="h-6 w-6 rounded-full object-cover"
+                      />
                     ) : drink.isAlcoholic ? (
                       <Wine className="h-4 w-4" />
                     ) : (
@@ -529,7 +544,9 @@ export default function InviteConfirmationClient({ token }: { token: string }) {
               className="inline-flex items-center justify-center gap-2 rounded-3xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
               <Download className="h-4 w-4" />
-              {isGenerating ? "Génération en cours..." : "Télécharger mon invitation"}
+              {isGenerating
+                ? "Génération en cours..."
+                : "Télécharger mon invitation"}
             </Button>
           </div>
         </div>
