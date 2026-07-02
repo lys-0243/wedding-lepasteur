@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 
 type Rsvp = "PENDING" | "CONFIRMED" | "DECLINED";
 type AssignedTo = "PRIMARY" | "PLUS_ONE";
-type InvitationType = "SINGLE" | "COUPLE";
+type InvitationType = "SINGLE" | "COUPLE" | "DUO";
 
 type Drink = {
   id: string;
@@ -146,7 +146,7 @@ export default function InviteConfirmationPage({
         return false;
       }
 
-      if (state.guest.invitationType === "COUPLE" && !plusOneDrinkId) {
+      if ((state.guest.invitationType === "COUPLE" || state.guest.invitationType === "DUO") && !plusOneDrinkId) {
         setError(
           "Merci de sélectionner la boisson pour celui/celle qui vous accomagne.",
         );
@@ -164,7 +164,7 @@ export default function InviteConfirmationPage({
         body: JSON.stringify({
           rsvpStatus,
           plusOneRsvpStatus:
-            state.guest.invitationType === "COUPLE" ? plusOneRsvpStatus : null,
+            state.guest.invitationType === "COUPLE" || state.guest.invitationType === "DUO" ? plusOneRsvpStatus : null,
         }),
       });
 
@@ -184,7 +184,7 @@ export default function InviteConfirmationPage({
           body: JSON.stringify({
             primaryDrinkId,
             plusOneDrinkId:
-              state.guest.invitationType === "COUPLE"
+              state.guest.invitationType === "COUPLE" || state.guest.invitationType === "DUO"
                 ? plusOneDrinkId
                 : undefined,
           }),
@@ -208,7 +208,7 @@ export default function InviteConfirmationPage({
                 ...prev.guest,
                 rsvpStatus,
                 plusOneRsvpStatus:
-                  prev.guest.invitationType === "COUPLE"
+                  prev.guest.invitationType === "COUPLE" || prev.guest.invitationType === "DUO"
                     ? plusOneRsvpStatus
                     : null,
                 respondedAt: new Date().toISOString(),
@@ -421,7 +421,7 @@ export default function InviteConfirmationPage({
           )}
 
           {rsvpStatus !== "DECLINED" &&
-            state.guest.invitationType === "COUPLE" && (
+            (state.guest.invitationType === "COUPLE" || state.guest.invitationType === "DUO") && (
               <div className="grid gap-4 rounded-3xl border border-[#E8ECF4] bg-slate-50 p-4 shadow-sm">
                 <p className="text-sm font-semibold text-slate-700">
                   Que prendra cellui/celle qui vous accompagne ?

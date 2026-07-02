@@ -8,7 +8,7 @@ const updateGuestSchema = z.object({
   lastName: z.string().min(1, "Le nom est requis"),
   email: z.string().email("Email invalide").or(z.literal("")).optional(),
   phone: z.string().optional(),
-  invitationType: z.enum(["SINGLE", "COUPLE"]),
+  invitationType: z.enum(["SINGLE", "COUPLE", "DUO"]),
   plusOneFirstName: z.string().optional(),
   plusOneLastName: z.string().optional(),
 });
@@ -48,8 +48,8 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       email: emailVal,
       phone: data.phone?.trim() || null,
       invitationType: data.invitationType,
-      plusOneFirstName: data.invitationType === "COUPLE" ? data.plusOneFirstName?.trim() || null : null,
-      plusOneLastName: data.invitationType === "COUPLE" ? data.plusOneLastName?.trim() || null : null,
+      plusOneFirstName: data.invitationType === "COUPLE" || data.invitationType === "DUO" ? data.plusOneFirstName?.trim() || null : null,
+      plusOneLastName: data.invitationType === "COUPLE" || data.invitationType === "DUO" ? data.plusOneLastName?.trim() || null : null,
     },
     select: {
       id: true,

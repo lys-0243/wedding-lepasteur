@@ -1,7 +1,7 @@
 type GuestNameProps = {
   firstName: string;
   lastName: string;
-  invitationType: "SINGLE" | "COUPLE";
+  invitationType: "SINGLE" | "COUPLE" | "DUO";
   plusOneFirstName?: string | null;
   className?: string;
 };
@@ -9,8 +9,9 @@ type GuestNameProps = {
 /**
  * Formats and displays a guest's name uniformly across the app.
  *
- * - SINGLE  → "Prénom Nom"
- * - COUPLE  → "Couple Prénom & PlusOnePrenom Nom"
+ * - SINGLE  → "Prénom Nom" (1 seat)
+ * - COUPLE  → "Couple Prénom Nom" (2 seats)
+ * - DUO     → "Prénom Nom" (2 seats)
  */
 export function GuestName({
   firstName,

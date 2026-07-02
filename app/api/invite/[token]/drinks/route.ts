@@ -51,7 +51,7 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
     );
   }
 
-  if (guest.invitationType === "COUPLE") {
+  if (guest.invitationType === "COUPLE" || guest.invitationType === "DUO") {
     if (!plusOneDrinkId || !allowedDrinkIds.has(plusOneDrinkId)) {
       return NextResponse.json(
         { error: "La boisson accompagnateur est invalide pour cet événement." },
@@ -72,7 +72,7 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
       },
     });
 
-    if (guest.invitationType === "COUPLE" && plusOneDrinkId) {
+    if ((guest.invitationType === "COUPLE" || guest.invitationType === "DUO") && plusOneDrinkId) {
       await tx.guestDrink.create({
         data: {
           guestId: guest.id,

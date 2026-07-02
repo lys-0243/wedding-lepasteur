@@ -8,7 +8,7 @@ const createGuestSchema = z.object({
   lastName: z.string().min(1, "Le nom est requis"),
   email: z.string().email("Email invalide").or(z.literal("")).optional(),
   phone: z.string().optional(),
-  invitationType: z.enum(["SINGLE", "COUPLE"]),
+  invitationType: z.enum(["SINGLE", "COUPLE", "DUO"]),
   plusOneFirstName: z.string().optional(),
   plusOneLastName: z.string().optional(),
 });

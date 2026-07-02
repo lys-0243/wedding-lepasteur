@@ -124,6 +124,7 @@ enum EventStatus {
 enum InvitationType {
   SINGLE
   COUPLE
+  DUO
 }
 
 enum RsvpStatus {

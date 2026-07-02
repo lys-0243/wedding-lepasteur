@@ -45,7 +45,7 @@ type GuestRow = {
   lastName: string;
   email: string | null;
   phone: string | null;
-  invitationType: "SINGLE" | "COUPLE";
+  invitationType: "SINGLE" | "COUPLE" | "DUO";
   plusOneFirstName: string | null;
   plusOneLastName: string | null;
   rsvpStatus: "PENDING" | "CONFIRMED" | "DECLINED";
@@ -111,9 +111,9 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [invitationType, setInvitationType] = useState<"SINGLE" | "COUPLE">(
-    "SINGLE",
-  );
+  const [invitationType, setInvitationType] = useState<
+    "SINGLE" | "COUPLE" | "DUO"
+  >("SINGLE");
   const [plusOneFirstName, setPlusOneFirstName] = useState("");
   const [plusOneLastName, setPlusOneLastName] = useState("");
   const [createLoading, setCreateLoading] = useState(false);
@@ -149,7 +149,7 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
   const [editEmail, setEditEmail] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [editInvitationType, setEditInvitationType] = useState<
-    "SINGLE" | "COUPLE"
+    "SINGLE" | "COUPLE" | "DUO"
   >("SINGLE");
   const [editPlusOneFirstName, setEditPlusOneFirstName] = useState("");
   const [editPlusOneLastName, setEditPlusOneLastName] = useState("");
@@ -219,7 +219,11 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
           Email: g.email || "",
           Téléphone: g.phone || "",
           "Type d'invitation":
-            g.invitationType === "COUPLE" ? "Couple" : "Seul",
+            g.invitationType === "COUPLE"
+              ? "Couple"
+              : g.invitationType === "DUO"
+                ? "Duo"
+                : "Seul",
           "Accompagnateur Prénom": g.plusOneFirstName || "",
           "Accompagnateur Nom": g.plusOneLastName || "",
           "Statut RSVP": rsvpLabel,
@@ -272,8 +276,13 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
             phone,
             invitationType,
             plusOneFirstName:
-              invitationType === "COUPLE" ? plusOneFirstName : "",
-            plusOneLastName: invitationType === "COUPLE" ? plusOneLastName : "",
+              invitationType === "COUPLE" || invitationType === "DUO"
+                ? plusOneFirstName
+                : "",
+            plusOneLastName:
+              invitationType === "COUPLE" || invitationType === "DUO"
+                ? plusOneLastName
+                : "",
           }),
         },
       );
@@ -360,9 +369,13 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
             phone: editPhone,
             invitationType: editInvitationType,
             plusOneFirstName:
-              editInvitationType === "COUPLE" ? editPlusOneFirstName : "",
+              editInvitationType === "COUPLE" || editInvitationType === "DUO"
+                ? editPlusOneFirstName
+                : "",
             plusOneLastName:
-              editInvitationType === "COUPLE" ? editPlusOneLastName : "",
+              editInvitationType === "COUPLE" || editInvitationType === "DUO"
+                ? editPlusOneLastName
+                : "",
           }),
         },
       );
@@ -580,17 +593,19 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
             ? String(row[mappedColumns.phone] || "").trim()
             : "";
 
-          let invType: "SINGLE" | "COUPLE" = "SINGLE";
+          let invType: "SINGLE" | "COUPLE" | "DUO" = "SINGLE";
           if (mappedColumns.invitationType) {
             const rawType = String(
               row[mappedColumns.invitationType] || "",
             ).toLowerCase();
-            if (
-              rawType.includes("couple") ||
+            if (rawType.includes("couple")) {
+              invType = "COUPLE";
+            } else if (
+              rawType.includes("duo") ||
               rawType.includes("deux") ||
               rawType.includes("2")
             ) {
-              invType = "COUPLE";
+              invType = "DUO";
             }
           } else if (
             mappedColumns.plusOneFirstName &&
@@ -696,7 +711,12 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
           <p className="mt-0.5 text-sm text-slate-500">
             {(() => {
               const occupiedSeats = table.guests.reduce(
-                (s, g) => s + (g.invitationType === "COUPLE" ? 2 : 1),
+                (s, g) =>
+                  s +
+                  (g.invitationType === "COUPLE" ||
+                  g.invitationType === "DUO"
+                    ? 2
+                    : 1),
                 0,
               );
               const free = table.capacity - occupiedSeats;
@@ -848,18 +868,25 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
                   <div className="flex justify-center">
                     <span
                       className={`px-2 py-0.5 rounded-lg text-xs font-semibold ${
-                        guest.invitationType === "COUPLE"
-                          ? "bg-purple-50 text-purple-700"
-                          : "bg-blue-50 text-blue-700"
+                        guest.invitationType === "DUO"
+                          ? "bg-emerald-50 text-emerald-700"
+                          : guest.invitationType === "COUPLE"
+                            ? "bg-purple-50 text-purple-700"
+                            : "bg-blue-50 text-blue-700"
                       }`}
                     >
-                      {guest.invitationType === "COUPLE" ? "Couple" : "Seul"}
+                      {guest.invitationType === "DUO"
+                        ? "Duo"
+                        : guest.invitationType === "COUPLE"
+                          ? "Couple"
+                          : "Seul"}
                     </span>
                   </div>
 
                   {/* Accompagnateur */}
                   <span className="text-xs text-slate-600 truncate">
-                    {guest.invitationType === "COUPLE"
+                    {guest.invitationType === "COUPLE" ||
+                    guest.invitationType === "DUO"
                       ? `${guest.plusOneFirstName || ""} ${guest.plusOneLastName || ""}`.trim() || (
                           <span className="text-slate-400 italic">
                             Non spécifié
@@ -1128,12 +1155,15 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
                     id="create-invitation-type"
                     value={invitationType}
                     onChange={(e) =>
-                      setInvitationType(e.target.value as "SINGLE" | "COUPLE")
+                      setInvitationType(
+                        e.target.value as "SINGLE" | "COUPLE" | "DUO",
+                      )
                     }
                     className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-[14px] outline-none appearance-none focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 shadow-xs cursor-pointer"
                   >
                     <option value="SINGLE">Seul</option>
                     <option value="COUPLE">Couple</option>
+                    <option value="DUO">Duo</option>
                   </select>
                   <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-400">
                     <Plus className="h-4 w-4 rotate-45" />
@@ -1257,13 +1287,16 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
                 <select
                   id="edit-invitation-type"
                   value={editInvitationType}
-                  onChange={(e) =>
-                    setEditInvitationType(e.target.value as "SINGLE" | "COUPLE")
-                  }
-                  className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-[14px] outline-none appearance-none focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 shadow-xs cursor-pointer"
-                >
-                  <option value="SINGLE">Seul</option>
-                  <option value="COUPLE">Couple</option>
+                    onChange={(e) =>
+                      setEditInvitationType(
+                        e.target.value as "SINGLE" | "COUPLE" | "DUO",
+                      )
+                    }
+                    className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-[14px] outline-none appearance-none focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 shadow-xs cursor-pointer"
+                  >
+                    <option value="SINGLE">Seul</option>
+                    <option value="COUPLE">Couple</option>
+                    <option value="DUO">Duo</option>
                 </select>
                 <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-400">
                   <Plus className="h-4 w-4 rotate-45" />
@@ -1794,10 +1827,12 @@ export function TableDetailClient({ eventId, table: initialTable }: Props) {
                 <p className="text-base font-bold text-slate-800">
                   {viewGuest.firstName} {viewGuest.lastName}
                 </p>
-                {viewGuest.invitationType === "COUPLE" && (
+                {(viewGuest.invitationType === "COUPLE" ||
+                  viewGuest.invitationType === "DUO") && (
                   <p className="text-sm text-pink-600 flex items-center gap-1.5">
                     <Heart className="h-3.5 w-3.5 shrink-0" />
-                    Couple avec {viewGuest.plusOneFirstName || ""}{" "}
+                    {viewGuest.invitationType === "DUO" ? "Duo" : "Couple"} avec{" "}
+                    {viewGuest.plusOneFirstName || ""}{" "}
                     {viewGuest.plusOneLastName || ""}
                   </p>
                 )}

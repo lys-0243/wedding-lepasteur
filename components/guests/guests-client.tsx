@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useTransition } from "react";
+import Link from "next/link";
 import {
   Users,
   Search,
@@ -49,7 +50,7 @@ type Guest = {
   lastName: string;
   email: string | null;
   phone: string | null;
-  invitationType: "SINGLE" | "COUPLE";
+  invitationType: "SINGLE" | "COUPLE" | "DUO";
   plusOneFirstName: string | null;
   plusOneLastName: string | null;
   rsvpStatus: "PENDING" | "CONFIRMED" | "DECLINED";
@@ -112,7 +113,7 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
   const [editEmail, setEditEmail] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [editInvitationType, setEditInvitationType] = useState<
-    "SINGLE" | "COUPLE"
+    "SINGLE" | "COUPLE" | "DUO"
   >("SINGLE");
   const [editPlusOneFirstName, setEditPlusOneFirstName] = useState("");
   const [editPlusOneLastName, setEditPlusOneLastName] = useState("");
@@ -129,7 +130,7 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
   const [createEmail, setCreateEmail] = useState("");
   const [createPhone, setCreatePhone] = useState("");
   const [createInvitationType, setCreateInvitationType] = useState<
-    "SINGLE" | "COUPLE"
+    "SINGLE" | "COUPLE" | "DUO"
   >("SINGLE");
   const [createPlusOneFirstName, setCreatePlusOneFirstName] = useState("");
   const [createPlusOneLastName, setCreatePlusOneLastName] = useState("");
@@ -225,7 +226,7 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
   const pending = guests.filter((g) => g.rsvpStatus === "PENDING").length;
 
   const totalAttendees = guests.reduce(
-    (sum, g) => sum + (g.invitationType === "COUPLE" ? 2 : 1),
+    (sum, g) => sum + (g.invitationType === "COUPLE" || g.invitationType === "DUO" ? 2 : 1),
     0,
   );
 
@@ -300,9 +301,9 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
           phone: editPhone,
           invitationType: editInvitationType,
           plusOneFirstName:
-            editInvitationType === "COUPLE" ? editPlusOneFirstName : "",
+            editInvitationType === "COUPLE" || editInvitationType === "DUO" ? editPlusOneFirstName : "",
           plusOneLastName:
-            editInvitationType === "COUPLE" ? editPlusOneLastName : "",
+            editInvitationType === "COUPLE" || editInvitationType === "DUO" ? editPlusOneLastName : "",
         }),
       });
       const data = await res.json();
@@ -360,9 +361,9 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
           phone: createPhone,
           invitationType: createInvitationType,
           plusOneFirstName:
-            createInvitationType === "COUPLE" ? createPlusOneFirstName : "",
+            createInvitationType === "COUPLE" || createInvitationType === "DUO" ? createPlusOneFirstName : "",
           plusOneLastName:
-            createInvitationType === "COUPLE" ? createPlusOneLastName : "",
+            createInvitationType === "COUPLE" || createInvitationType === "DUO" ? createPlusOneLastName : "",
         }),
       });
       const data = await res.json();
@@ -406,7 +407,7 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
           Email: g.email || "",
           Téléphone: g.phone || "",
           "Type d'invitation":
-            g.invitationType === "COUPLE" ? "Couple" : "Seul",
+            g.invitationType === "COUPLE" ? "Couple" : g.invitationType === "DUO" ? "Duo" : "Seul",
           "Accompagnateur Prénom": g.plusOneFirstName || "",
           "Accompagnateur Nom": g.plusOneLastName || "",
           "Statut RSVP": rsvpLabel,
@@ -578,17 +579,15 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
             ? String(row[mappedColumns.phone] || "").trim()
             : "";
 
-          let invType: "SINGLE" | "COUPLE" = "SINGLE";
+          let invType: "SINGLE" | "COUPLE" | "DUO" = "SINGLE";
           if (mappedColumns.invitationType) {
             const rawType = String(
               row[mappedColumns.invitationType] || "",
             ).toLowerCase();
-            if (
-              rawType.includes("couple") ||
-              rawType.includes("deux") ||
-              rawType.includes("2")
-            ) {
+            if (rawType.includes("couple")) {
               invType = "COUPLE";
+            } else if (rawType.includes("duo") || rawType.includes("deux") || rawType.includes("2")) {
+              invType = "DUO";
             }
           } else if (
             mappedColumns.plusOneFirstName &&
@@ -821,6 +820,11 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
                       <Heart className="h-2.5 w-2.5" />
                       Couple
                     </span>
+                  ) : guest.invitationType === "DUO" ? (
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-lg px-2 py-0.5">
+                      <Users className="h-2.5 w-2.5" />
+                      Duo
+                    </span>
                   ) : (
                     <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 bg-slate-100 border border-slate-200 rounded-lg px-2 py-0.5">
                       <User className="h-2.5 w-2.5" />
@@ -832,10 +836,13 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
                 {/* Table */}
                 <div>
                   {guest.table ? (
-                    <span className="inline-flex items-center gap-1 text-xs font-medium text-[#1E5FF5] bg-blue-50 border border-blue-200 rounded-lg px-2 py-0.5 truncate max-w-[120px]">
+                    <Link
+                      href={`/events/${eventId}/tables/${guest.table.id}`}
+                      className="inline-flex items-center gap-1 text-xs font-medium text-[#1E5FF5] bg-blue-50 border border-blue-200 rounded-lg px-2 py-0.5 truncate max-w-[120px] hover:bg-blue-100 transition-colors"
+                    >
                       <Armchair className="h-2.5 w-2.5 shrink-0" />
                       {guest.table.name}
-                    </span>
+                    </Link>
                   ) : (
                     <span className="text-xs text-slate-400">—</span>
                   )}
@@ -851,7 +858,7 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
                     {RSVP_ICONS[guest.rsvpStatus]}
                     {RSVP_LABELS[guest.rsvpStatus]}
                   </span>
-                  {guest.invitationType === "COUPLE" &&
+                  {(guest.invitationType === "COUPLE" || guest.invitationType === "DUO") &&
                     guest.plusOneRsvpStatus && (
                       <span
                         className={`mt-0.5 block inline-flex items-center gap-1 text-[10px] font-medium rounded-lg px-1.5 py-0.5 ${
@@ -953,10 +960,10 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
                 <p className="text-base font-bold text-slate-800">
                   {viewGuest.firstName} {viewGuest.lastName}
                 </p>
-                {viewGuest.invitationType === "COUPLE" && (
+                {(viewGuest.invitationType === "COUPLE" || viewGuest.invitationType === "DUO") && (
                   <p className="text-sm text-pink-600 flex items-center gap-1.5">
                     <Heart className="h-3.5 w-3.5 shrink-0" />
-                    Couple avec {viewGuest.plusOneFirstName || ""}{" "}
+                    {viewGuest.invitationType === "DUO" ? "Duo avec" : "Couple avec"} {viewGuest.plusOneFirstName || ""}{" "}
                     {viewGuest.plusOneLastName || ""}
                   </p>
                 )}
@@ -985,10 +992,13 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
                     Table
                   </p>
                   {viewGuest.table ? (
-                    <span className="inline-flex items-center gap-1 text-sm font-semibold text-[#1E5FF5]">
+                    <Link
+                      href={`/events/${eventId}/tables/${viewGuest.table.id}`}
+                      className="inline-flex items-center gap-1 text-sm font-semibold text-[#1E5FF5] hover:underline"
+                    >
                       <Armchair className="h-3.5 w-3.5 shrink-0" />
                       {viewGuest.table.name}
-                    </span>
+                    </Link>
                   ) : (
                     <span className="text-sm text-slate-400 italic">
                       Non assigné
@@ -1119,12 +1129,13 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
                 <select
                   value={editInvitationType}
                   onChange={(e) =>
-                    setEditInvitationType(e.target.value as "SINGLE" | "COUPLE")
+                    setEditInvitationType(e.target.value as "SINGLE" | "COUPLE" | "DUO")
                   }
                   className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-[14px] outline-none appearance-none focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 shadow-xs cursor-pointer"
                 >
                   <option value="SINGLE">Seul(e)</option>
                   <option value="COUPLE">Couple</option>
+                  <option value="DUO">Duo</option>
                 </select>
                 <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
                   <X className="h-4 w-4 rotate-45" />
@@ -1306,13 +1317,14 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
                   value={createInvitationType}
                   onChange={(e) =>
                     setCreateInvitationType(
-                      e.target.value as "SINGLE" | "COUPLE",
+                      e.target.value as "SINGLE" | "COUPLE" | "DUO",
                     )
                   }
                   className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-[14px] outline-none appearance-none focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 shadow-xs cursor-pointer"
                 >
                   <option value="SINGLE">Seul</option>
                   <option value="COUPLE">Couple</option>
+                  <option value="DUO">Duo</option>
                 </select>
                 <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-400">
                   <X className="h-4 w-4 rotate-45" />
