@@ -37,6 +37,7 @@ export async function GET(req: NextRequest, { params }: RouteContext) {
     orderBy: { createdAt: "asc" },
     select: {
       id: true,
+      token: true,
       firstName: true,
       lastName: true,
       email: true,
@@ -69,7 +70,10 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
   const body = await req.json();
   const parsed = createGuestSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    return NextResponse.json(
+      { error: parsed.error.flatten() },
+      { status: 400 },
+    );
   }
 
   const data = parsed.data;
@@ -84,8 +88,14 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
       email: emailVal,
       phone: data.phone?.trim() || null,
       invitationType: data.invitationType,
-      plusOneFirstName: data.invitationType === "COUPLE" || data.invitationType === "DUO" ? data.plusOneFirstName?.trim() || null : null,
-      plusOneLastName: data.invitationType === "COUPLE" || data.invitationType === "DUO" ? data.plusOneLastName?.trim() || null : null,
+      plusOneFirstName:
+        data.invitationType === "COUPLE"
+          ? data.plusOneFirstName?.trim() || null
+          : null,
+      plusOneLastName:
+        data.invitationType === "COUPLE"
+          ? data.plusOneLastName?.trim() || null
+          : null,
     },
   });
 

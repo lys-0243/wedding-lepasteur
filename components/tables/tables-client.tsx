@@ -2,7 +2,18 @@
 
 import { useState, useRef, useTransition } from "react";
 import Link from "next/link";
-import { Plus, Upload, Pencil, Trash2, Users, FileSpreadsheet, X, AlertTriangle, Download, Eye } from "lucide-react";
+import {
+  Plus,
+  Upload,
+  Pencil,
+  Trash2,
+  Users,
+  FileSpreadsheet,
+  X,
+  AlertTriangle,
+  Download,
+  Eye,
+} from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
@@ -50,11 +61,15 @@ export function TablesClient({ eventId, initialTables }: Props) {
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   // ── Batch download ─────────────────────────────────────────────────────────
-  const [downloadingTableId, setDownloadingTableId] = useState<string | null>(null);
+  const [downloadingTableId, setDownloadingTableId] = useState<string | null>(
+    null,
+  );
 
   async function handleDownloadAllInvitations(tableId: string) {
     try {
-      const res = await fetch(`/api/events/${eventId}/tables/${tableId}/guests`);
+      const res = await fetch(
+        `/api/events/${eventId}/tables/${tableId}/guests`,
+      );
       const guests = await res.json();
 
       if (!Array.isArray(guests) || guests.length === 0) {
@@ -87,7 +102,10 @@ export function TablesClient({ eventId, initialTables }: Props) {
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const [fileHeaders, setFileHeaders] = useState<string[]>([]);
   const [rawData, setRawData] = useState<Record<string, any>[]>([]);
-  const [mappedColumns, setMappedColumns] = useState({ name: "", capacity: "" });
+  const [mappedColumns, setMappedColumns] = useState({
+    name: "",
+    capacity: "",
+  });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -95,7 +113,7 @@ export function TablesClient({ eventId, initialTables }: Props) {
     try {
       const exportData = tables.map((t) => ({
         "Nom de la table": t.name,
-        "Capacité": t.capacity,
+        Capacité: t.capacity,
         "Nombre d'invités": t._count.guests,
       }));
       const worksheet = XLSX.utils.json_to_sheet(exportData);
@@ -126,14 +144,19 @@ export function TablesClient({ eventId, initialTables }: Props) {
       const res = await fetch(`/api/events/${eventId}/tables`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: createName, capacity: Number(createCapacity) }),
+        body: JSON.stringify({
+          name: createName,
+          capacity: Number(createCapacity),
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
         toast.error(data.error ?? "Erreur lors de la création.");
         return;
       }
-      setTables((prev) => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
+      setTables((prev) =>
+        [...prev, data].sort((a, b) => a.name.localeCompare(b.name)),
+      );
       setCreateOpen(false);
       setCreateName("");
       setCreateCapacity("10");
@@ -151,7 +174,10 @@ export function TablesClient({ eventId, initialTables }: Props) {
       const res = await fetch(`/api/events/${eventId}/tables/${editTable.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: editName, capacity: Number(editCapacity) }),
+        body: JSON.stringify({
+          name: editName,
+          capacity: Number(editCapacity),
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -159,7 +185,9 @@ export function TablesClient({ eventId, initialTables }: Props) {
         return;
       }
       setTables((prev) =>
-        prev.map((t) => (t.id === data.id ? data : t)).sort((a, b) => a.name.localeCompare(b.name))
+        prev
+          .map((t) => (t.id === data.id ? data : t))
+          .sort((a, b) => a.name.localeCompare(b.name)),
       );
       setEditTable(null);
       toast.success(`Table « ${data.name} » mise à jour.`);
@@ -172,9 +200,12 @@ export function TablesClient({ eventId, initialTables }: Props) {
     if (!deleteTable) return;
     setDeleteLoading(true);
     try {
-      const res = await fetch(`/api/events/${eventId}/tables/${deleteTable.id}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(
+        `/api/events/${eventId}/tables/${deleteTable.id}`,
+        {
+          method: "DELETE",
+        },
+      );
       if (!res.ok) {
         toast.error("Erreur lors de la suppression.");
         return;
@@ -217,9 +248,11 @@ export function TablesClient({ eventId, initialTables }: Props) {
         const workbook = XLSX.read(data, { type: "array" });
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
-        
+
         // Extract rows as raw JSON objects
-        const rawRows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: "" });
+        const rawRows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, {
+          defval: "",
+        });
         if (rawRows.length === 0) {
           toast.error("Le fichier Excel est vide.");
           return;
@@ -231,10 +264,17 @@ export function TablesClient({ eventId, initialTables }: Props) {
         setUploadedFileName(file.name);
 
         // Smart column matching
-        const nameCol = headers.find(h => /nom|name|titre|title/i.test(h)) || headers[0] || "";
-        const capCol = headers.find(h => /capacit|places|invit|capacity|qty|size|nombre/i.test(h)) || headers[1] || "";
+        const nameCol =
+          headers.find((h) => /nom|name|titre|title/i.test(h)) ||
+          headers[0] ||
+          "";
+        const capCol =
+          headers.find((h) =>
+            /capacit|places|invit|capacity|qty|size|nombre/i.test(h),
+          ) ||
+          headers[1] ||
+          "";
         setMappedColumns({ name: nameCol, capacity: capCol });
-
       } catch (err) {
         console.error(err);
         toast.error("Impossible de lire le fichier Excel.");
@@ -314,7 +354,9 @@ export function TablesClient({ eventId, initialTables }: Props) {
         return;
       }
 
-      toast.success(`Importation réussie : ${data.created} table(s) ajoutée(s).`);
+      toast.success(
+        `Importation réussie : ${data.created} table(s) ajoutée(s).`,
+      );
       setImportOpen(false);
       clearUploadedFile();
       await refreshTables();
@@ -328,7 +370,7 @@ export function TablesClient({ eventId, initialTables }: Props) {
 
   // ── Filtered list ──────────────────────────────────────────────────────────
   const filtered = tables.filter((t) =>
-    t.name.toLowerCase().includes(search.toLowerCase())
+    t.name.toLowerCase().includes(search.toLowerCase()),
   );
 
   const totalCapacity = tables.reduce((acc, t) => acc + t.capacity, 0);
@@ -336,8 +378,12 @@ export function TablesClient({ eventId, initialTables }: Props) {
 
   // Compute mapped previews
   const previewRows = rawData.slice(0, 5).map((row) => {
-    const name = mappedColumns.name ? String(row[mappedColumns.name] || "").trim() : "";
-    const capacity = mappedColumns.capacity ? Number(row[mappedColumns.capacity]) || 0 : 0;
+    const name = mappedColumns.name
+      ? String(row[mappedColumns.name] || "").trim()
+      : "";
+    const capacity = mappedColumns.capacity
+      ? Number(row[mappedColumns.capacity]) || 0
+      : 0;
     return { name, capacity };
   });
 
@@ -350,7 +396,10 @@ export function TablesClient({ eventId, initialTables }: Props) {
             Tables
           </h1>
           <p className="mt-0.5 text-sm text-slate-500">
-            {tables.length} table{tables.length !== 1 ? "s" : ""} · {totalGuests}/{totalCapacity} places occupées
+            {tables.length} table{tables.length !== 1 ? "s" : ""} au total ·{" "}
+            {totalGuests} invité{totalGuests > 1 ? "s" : ""} sur {totalCapacity}{" "}
+            place
+            {totalCapacity > 1 ? "s" : ""} prévues
           </p>
         </div>
 
@@ -412,7 +461,7 @@ export function TablesClient({ eventId, initialTables }: Props) {
       {/* ── Table list ────────────────────────────────────────────────────── */}
       <div className="mt-4 overflow-x-auto rounded-2xl border border-[#E8ECF4] bg-white shadow-sm">
         {/* Table head */}
-        <div className="min-w-[600px] grid grid-cols-[auto_1fr_120px_100px_140px] items-center border-b border-[#E8ECF4] bg-slate-50/60 px-5 py-3 text-[0.7rem] font-bold uppercase tracking-widest text-slate-400">
+        <div className="min-w-150 grid grid-cols-[auto_1fr_120px_100px_140px] items-center border-b border-[#E8ECF4] bg-slate-50/60 px-5 py-3 text-[0.7rem] font-bold uppercase tracking-widest text-slate-400">
           <span className="w-8" />
           <span>Nom</span>
           <span className="text-center">Capacité</span>
@@ -426,7 +475,9 @@ export function TablesClient({ eventId, initialTables }: Props) {
               <FileSpreadsheet className="h-6 w-6 text-slate-400" />
             </div>
             <p className="text-sm font-medium text-slate-500">
-              {search ? "Aucune table ne correspond à votre recherche." : "Aucune table pour cet événement."}
+              {search
+                ? "Aucune table ne correspond à votre recherche."
+                : "Aucune table pour cet événement."}
             </p>
             {!search && (
               <button
@@ -440,19 +491,20 @@ export function TablesClient({ eventId, initialTables }: Props) {
         ) : (
           <ul>
             {filtered.map((table, i) => {
-              const occupancy = table.capacity > 0 ? table._count.guests / table.capacity : 0;
+              const occupancy =
+                table.capacity > 0 ? table._count.guests / table.capacity : 0;
               const pct = Math.min(Math.round(occupancy * 100), 100);
               const barColor =
                 pct >= 90
                   ? "bg-red-400"
                   : pct >= 60
-                  ? "bg-amber-400"
-                  : "bg-emerald-400";
+                    ? "bg-amber-400"
+                    : "bg-emerald-400";
 
               return (
                 <li
                   key={table.id}
-                  className={`min-w-[600px] grid grid-cols-[auto_1fr_120px_100px_140px] items-center gap-2 px-5 py-3.5 transition-colors hover:bg-slate-50/60 ${
+                  className={`min-w-150 grid grid-cols-[auto_1fr_120px_100px_140px] items-center gap-2 px-5 py-3.5 transition-colors hover:bg-slate-50/60 ${
                     i !== filtered.length - 1 ? "border-b border-[#E8ECF4]" : ""
                   }`}
                 >
@@ -498,7 +550,9 @@ export function TablesClient({ eventId, initialTables }: Props) {
                       <Eye className="h-3.5 w-3.5" />
                     </Link>
                     <button
-                      onClick={() => void handleDownloadAllInvitations(table.id)}
+                      onClick={() =>
+                        void handleDownloadAllInvitations(table.id)
+                      }
                       disabled={downloadingTableId === table.id}
                       className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-purple-50 hover:text-purple-600 disabled:opacity-40"
                       title="Télécharger les invitations"
@@ -541,7 +595,7 @@ export function TablesClient({ eventId, initialTables }: Props) {
 
       {/* ── Create dialog ───────────────────────────────────────────────────── */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-md w-full rounded-[24px] bg-white p-6 shadow-2xl border-none gap-0 overflow-hidden outline-none">
+        <DialogContent className="max-w-md w-full rounded-3xl bg-white p-6 shadow-2xl border-none gap-0 overflow-hidden outline-none">
           <DialogHeader className="pb-4 border-b border-[#E8ECF4] mb-5">
             <DialogTitle className="text-[18px] font-bold text-slate-800">
               Nouvelle table
@@ -549,7 +603,10 @@ export function TablesClient({ eventId, initialTables }: Props) {
           </DialogHeader>
           <form onSubmit={handleCreate} className="space-y-4 pt-2">
             <div className="space-y-1.5">
-              <Label htmlFor="create-name" className="text-[14px] font-medium text-slate-700 mb-1.5 block">
+              <Label
+                htmlFor="create-name"
+                className="text-[14px] font-medium text-slate-700 mb-1.5 block"
+              >
                 Nom de la table <span className="text-red-500">*</span>
               </Label>
               <Input
@@ -563,7 +620,10 @@ export function TablesClient({ eventId, initialTables }: Props) {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="create-capacity" className="text-[14px] font-medium text-slate-700 mb-1.5 block">
+              <Label
+                htmlFor="create-capacity"
+                className="text-[14px] font-medium text-slate-700 mb-1.5 block"
+              >
                 Nombre d&apos;invités <span className="text-red-500">*</span>
               </Label>
               <Input
@@ -578,7 +638,7 @@ export function TablesClient({ eventId, initialTables }: Props) {
                 className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-[14px] outline-none transition-all focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 shadow-xs placeholder-slate-400"
               />
             </div>
-            <DialogFooter className="bg-[#F8FAFC] border-t border-[#E8ECF4] px-6 py-4 flex justify-end gap-3 rounded-b-[24px] -mx-6 -mb-6 mt-6">
+            <DialogFooter className="bg-[#F8FAFC] border-t border-[#E8ECF4] px-6 py-4 flex justify-end gap-3 rounded-b-3xl -mx-6 -mb-6 mt-6">
               <Button
                 type="button"
                 onClick={() => setCreateOpen(false)}
@@ -589,7 +649,9 @@ export function TablesClient({ eventId, initialTables }: Props) {
               </Button>
               <Button
                 type="submit"
-                disabled={createLoading || !createName.trim() || !createCapacity}
+                disabled={
+                  createLoading || !createName.trim() || !createCapacity
+                }
                 className="h-10 px-5 rounded-xl bg-[#1E5FF5] text-white text-sm font-medium hover:bg-[#154ED0] transition-colors shadow-xs disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 {createLoading ? (
@@ -608,7 +670,7 @@ export function TablesClient({ eventId, initialTables }: Props) {
 
       {/* ── Edit dialog ─────────────────────────────────────────────────────── */}
       <Dialog open={!!editTable} onOpenChange={(o) => !o && setEditTable(null)}>
-        <DialogContent className="max-w-md w-full rounded-[24px] bg-white p-6 shadow-2xl border-none gap-0 overflow-hidden outline-none">
+        <DialogContent className="max-w-md w-full rounded-3xl bg-white p-6 shadow-2xl border-none gap-0 overflow-hidden outline-none">
           <DialogHeader className="pb-4 border-b border-[#E8ECF4] mb-5">
             <DialogTitle className="text-[18px] font-bold text-slate-800">
               Modifier la table
@@ -616,7 +678,10 @@ export function TablesClient({ eventId, initialTables }: Props) {
           </DialogHeader>
           <form onSubmit={handleEdit} className="space-y-4 pt-2">
             <div className="space-y-1.5">
-              <Label htmlFor="edit-name" className="text-[14px] font-medium text-slate-700 mb-1.5 block">
+              <Label
+                htmlFor="edit-name"
+                className="text-[14px] font-medium text-slate-700 mb-1.5 block"
+              >
                 Nom de la table <span className="text-red-500">*</span>
               </Label>
               <Input
@@ -629,7 +694,10 @@ export function TablesClient({ eventId, initialTables }: Props) {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="edit-capacity" className="text-[14px] font-medium text-slate-700 mb-1.5 block">
+              <Label
+                htmlFor="edit-capacity"
+                className="text-[14px] font-medium text-slate-700 mb-1.5 block"
+              >
                 Nombre d&apos;invités <span className="text-red-500">*</span>
               </Label>
               <Input
@@ -643,7 +711,7 @@ export function TablesClient({ eventId, initialTables }: Props) {
                 className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-[14px] outline-none transition-all focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 shadow-xs placeholder-slate-400"
               />
             </div>
-            <DialogFooter className="bg-[#F8FAFC] border-t border-[#E8ECF4] px-6 py-4 flex justify-end gap-3 rounded-b-[24px] -mx-6 -mb-6 mt-6">
+            <DialogFooter className="bg-[#F8FAFC] border-t border-[#E8ECF4] px-6 py-4 flex justify-end gap-3 rounded-b-3xl -mx-6 -mb-6 mt-6">
               <Button
                 type="button"
                 onClick={() => setEditTable(null)}
@@ -672,8 +740,11 @@ export function TablesClient({ eventId, initialTables }: Props) {
       </Dialog>
 
       {/* ── Delete confirmation dialog ───────────────────────────────────────── */}
-      <Dialog open={!!deleteTable} onOpenChange={(o) => !o && setDeleteTable(null)}>
-        <DialogContent className="max-w-md w-full rounded-[24px] bg-white p-6 shadow-2xl border-none gap-0 overflow-hidden outline-none">
+      <Dialog
+        open={!!deleteTable}
+        onOpenChange={(o) => !o && setDeleteTable(null)}
+      >
+        <DialogContent className="max-w-md w-full rounded-3xl bg-white p-6 shadow-2xl border-none gap-0 overflow-hidden outline-none">
           <DialogHeader className="pb-4 border-b border-[#E8ECF4] mb-5">
             <DialogTitle className="text-[18px] font-bold text-slate-800">
               Supprimer la table
@@ -683,19 +754,30 @@ export function TablesClient({ eventId, initialTables }: Props) {
             <div className="flex gap-3 items-start bg-red-50 text-red-700 p-4 rounded-xl border border-red-100">
               <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-semibold">Cette action est irréversible</p>
+                <p className="text-sm font-semibold">
+                  Cette action est irréversible
+                </p>
                 <p className="text-xs text-red-600 mt-0.5">
-                  Êtes-vous sûr de vouloir supprimer la table <strong className="text-red-900">« {deleteTable?.name} »</strong> ?
+                  Êtes-vous sûr de vouloir supprimer la table{" "}
+                  <strong className="text-red-900">
+                    « {deleteTable?.name} »
+                  </strong>{" "}
+                  ?
                 </p>
               </div>
             </div>
             {deleteTable && deleteTable._count.guests > 0 && (
               <p className="text-sm text-slate-500">
-                ⚠ Il y a actuellement <strong className="text-slate-800">{deleteTable._count.guests} invité(s)</strong> assigné(s) à cette table. Ils seront automatiquement désassignés.
+                ⚠ Il y a actuellement{" "}
+                <strong className="text-slate-800">
+                  {deleteTable._count.guests} invité(s)
+                </strong>{" "}
+                assigné(s) à cette table. Ils seront automatiquement
+                désassignés.
               </p>
             )}
           </div>
-          <DialogFooter className="bg-[#F8FAFC] border-t border-[#E8ECF4] px-6 py-4 flex justify-end gap-3 rounded-b-[24px] -mx-6 -mb-6 mt-6">
+          <DialogFooter className="bg-[#F8FAFC] border-t border-[#E8ECF4] px-6 py-4 flex justify-end gap-3 rounded-b-3xl -mx-6 -mb-6 mt-6">
             <Button
               type="button"
               onClick={() => setDeleteTable(null)}
@@ -716,8 +798,16 @@ export function TablesClient({ eventId, initialTables }: Props) {
       </Dialog>
 
       {/* ── Import dialog ───────────────────────────────────────────────────── */}
-      <Dialog open={importOpen} onOpenChange={(o) => { if (!o) { setImportOpen(false); clearUploadedFile(); } }}>
-        <DialogContent className="max-w-lg w-full rounded-[24px] bg-white p-6 shadow-2xl border-none gap-0 overflow-hidden outline-none">
+      <Dialog
+        open={importOpen}
+        onOpenChange={(o) => {
+          if (!o) {
+            setImportOpen(false);
+            clearUploadedFile();
+          }
+        }}
+      >
+        <DialogContent className="max-w-lg w-full rounded-3xl bg-white p-6 shadow-2xl border-none gap-0 overflow-hidden outline-none">
           <DialogHeader className="pb-4 border-b border-[#E8ECF4] mb-4">
             <DialogTitle className="text-[18px] font-bold text-slate-800">
               Importer des tables
@@ -750,7 +840,7 @@ export function TablesClient({ eventId, initialTables }: Props) {
                   className="hidden"
                   onChange={handleFileChange}
                 />
-                
+
                 <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-50 text-[#1E5FF5] mb-4">
                   <Upload className="h-6 w-6" />
                 </div>
@@ -771,7 +861,7 @@ export function TablesClient({ eventId, initialTables }: Props) {
               </div>
             ) : (
               // Step 2: Mapping and Preview (Image 2 style)
-              <div className="space-y-4 max-h-[380px] overflow-y-auto pr-1">
+              <div className="space-y-4 max-h-95 overflow-y-auto pr-1">
                 {/* File badge with delete icon */}
                 <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-3">
                   <div className="flex items-center gap-2.5 min-w-0">
@@ -804,7 +894,12 @@ export function TablesClient({ eventId, initialTables }: Props) {
                       <div className="relative w-2/3">
                         <select
                           value={mappedColumns.name}
-                          onChange={(e) => setMappedColumns({ ...mappedColumns, name: e.target.value })}
+                          onChange={(e) =>
+                            setMappedColumns({
+                              ...mappedColumns,
+                              name: e.target.value,
+                            })
+                          }
                           className="w-full h-10 pl-3 pr-8 rounded-xl border border-slate-200 bg-white text-slate-800 text-[13px] outline-none appearance-none focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 cursor-pointer"
                         >
                           <option value="">— Choisir —</option>
@@ -828,7 +923,12 @@ export function TablesClient({ eventId, initialTables }: Props) {
                       <div className="relative w-2/3">
                         <select
                           value={mappedColumns.capacity}
-                          onChange={(e) => setMappedColumns({ ...mappedColumns, capacity: e.target.value })}
+                          onChange={(e) =>
+                            setMappedColumns({
+                              ...mappedColumns,
+                              capacity: e.target.value,
+                            })
+                          }
                           className="w-full h-10 pl-3 pr-8 rounded-xl border border-slate-200 bg-white text-slate-800 text-[13px] outline-none appearance-none focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 cursor-pointer"
                         >
                           <option value="">— Choisir —</option>
@@ -857,15 +957,26 @@ export function TablesClient({ eventId, initialTables }: Props) {
                       <table className="w-full border-collapse text-left text-xs">
                         <thead>
                           <tr className="bg-slate-50 border-b border-slate-200">
-                            <th className="px-3 py-2 font-semibold text-slate-500">Nom de la table</th>
-                            <th className="px-3 py-2 font-semibold text-slate-500">Capacité (Invités)</th>
+                            <th className="px-3 py-2 font-semibold text-slate-500">
+                              Nom de la table
+                            </th>
+                            <th className="px-3 py-2 font-semibold text-slate-500">
+                              Capacité (Invités)
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
                           {previewRows.map((row, idx) => (
-                            <tr key={idx} className="border-b border-slate-100 last:border-none">
-                              <td className="px-3 py-2 text-slate-700 font-medium truncate max-w-[200px]">
-                                {row.name || <span className="text-slate-400 italic">Vide</span>}
+                            <tr
+                              key={idx}
+                              className="border-b border-slate-100 last:border-none"
+                            >
+                              <td className="px-3 py-2 text-slate-700 font-medium truncate max-w-50">
+                                {row.name || (
+                                  <span className="text-slate-400 italic">
+                                    Vide
+                                  </span>
+                                )}
                               </td>
                               <td className="px-3 py-2 text-slate-600">
                                 {row.capacity} places
@@ -881,7 +992,7 @@ export function TablesClient({ eventId, initialTables }: Props) {
             )}
           </div>
 
-          <DialogFooter className="bg-[#F8FAFC] border-t border-[#E8ECF4] px-6 py-4 flex justify-end gap-3 rounded-b-[24px] -mx-6 -mb-6 mt-6">
+          <DialogFooter className="bg-[#F8FAFC] border-t border-[#E8ECF4] px-6 py-4 flex justify-end gap-3 rounded-b-3xl -mx-6 -mb-6 mt-6">
             <Button
               type="button"
               onClick={() => {
@@ -897,7 +1008,11 @@ export function TablesClient({ eventId, initialTables }: Props) {
               <Button
                 type="button"
                 onClick={handleImportSubmit}
-                disabled={importLoading || !mappedColumns.name || !mappedColumns.capacity}
+                disabled={
+                  importLoading ||
+                  !mappedColumns.name ||
+                  !mappedColumns.capacity
+                }
                 className="h-10 px-5 rounded-xl bg-[#1E5FF5] text-white text-sm font-medium hover:bg-[#154ED0] transition-colors shadow-xs disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 {importLoading ? (

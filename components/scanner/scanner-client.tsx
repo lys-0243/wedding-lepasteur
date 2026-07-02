@@ -1,9 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
-import { Loader2, Scan, X, CheckCircle2, UserCheck } from "lucide-react";
+import {
+  Loader2,
+  Scan,
+  Search,
+  X,
+  CheckCircle2,
+  UserCheck,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -15,11 +23,24 @@ type ScannerProps = {
   eventId: string;
 };
 
+type SearchGuest = {
+  id: string;
+  token: string;
+  name: string;
+  tableName: string | null;
+  checkedInAt: string | null;
+};
+
 export function ScannerClient({ eventId }: ScannerProps) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [cameraEnabled, setCameraEnabled] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [guests, setGuests] = useState<SearchGuest[]>([]);
+  const [loadingGuests, setLoadingGuests] = useState(true);
+  const [guestsError, setGuestsError] = useState<string | null>(null);
+  const [lookupSource, setLookupSource] = useState<"scan" | "search">("scan");
   const [scannedToken, setScannedToken] = useState<string | null>(null);
   const [guestInfo, setGuestInfo] = useState<{
     name: string;
@@ -32,6 +53,70 @@ export function ScannerClient({ eventId }: ScannerProps) {
   const [confirmed, setConfirmed] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+
+    setLoadingGuests(true);
+    setGuestsError(null);
+
+    fetch(`/api/events/${eventId}/guests`)
+      .then(async (res) => {
+        const data = (await res.json()) as Array<{
+          id: string;
+          token: string;
+          firstName: string;
+          lastName: string;
+          invitationType: "SINGLE" | "COUPLE";
+          checkedInAt: string | null;
+          table: { name: string } | null;
+        }>;
+
+        if (!res.ok) {
+          throw new Error("Impossible de charger les invités.");
+        }
+
+        if (cancelled) return;
+
+        setGuests(
+          data
+            .filter((guest) => Boolean(guest.token))
+            .map((guest) => ({
+              id: guest.id,
+              token: guest.token,
+              name:
+                guest.invitationType === "COUPLE"
+                  ? `Couple ${guest.firstName} ${guest.lastName}`.trim()
+                  : `${guest.firstName} ${guest.lastName}`.trim(),
+              tableName: guest.table?.name ?? null,
+              checkedInAt: guest.checkedInAt,
+            })),
+        );
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setGuestsError("Impossible de charger la liste des invités.");
+        console.error("Guests fetch error:", err);
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setLoadingGuests(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId]);
+
+  const filteredGuests = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return guests;
+    return guests.filter((guest) => guest.name.toLowerCase().includes(query));
+  }, [guests, searchQuery]);
+
+  useEffect(() => {
+    if (!cameraEnabled) return;
+
+    setCameraError(null);
+
     const scanner = new Html5Qrcode("scanner-container");
     scannerRef.current = scanner;
 
@@ -50,6 +135,7 @@ export function ScannerClient({ eventId }: ScannerProps) {
           }
           if (!token) return;
 
+          setLookupSource("scan");
           setScannedToken(token);
           scanner.pause();
 
@@ -99,16 +185,37 @@ export function ScannerClient({ eventId }: ScannerProps) {
       });
 
     return () => {
-      scanner.stop().catch(() => {});
+      scanner
+        .stop()
+        .catch(() => {})
+        .finally(() => {
+          scanner.clear();
+          setScanning(false);
+        });
     };
-  }, [eventId]);
+  }, [cameraEnabled, eventId]);
+
+  function handleSelectGuest(guest: SearchGuest) {
+    setLookupSource("search");
+    setScannedToken(guest.token);
+    setGuestInfo({
+      name: guest.name,
+      tableName: guest.tableName,
+      checkedInAt: guest.checkedInAt,
+    });
+    setLookupError(null);
+    setConfirmed(false);
+    setLoadingInfo(false);
+  }
 
   function handleCloseDialog() {
     setScannedToken(null);
     setGuestInfo(null);
     setLookupError(null);
     setConfirmed(false);
-    scannerRef.current?.resume();
+    if (cameraEnabled && scanning) {
+      scannerRef.current?.resume();
+    }
   }
 
   async function handleConfirmCheckin() {
@@ -137,6 +244,13 @@ export function ScannerClient({ eventId }: ScannerProps) {
 
       setGuestInfo(data.guest);
       setConfirmed(true);
+      setGuests((prev) =>
+        prev.map((guest) =>
+          guest.token === scannedToken
+            ? { ...guest, checkedInAt: data.guest.checkedInAt }
+            : guest,
+        ),
+      );
     } catch (err) {
       setLookupError("Erreur réseau.");
       console.error("Scanner checkin POST error:", err);
@@ -145,65 +259,173 @@ export function ScannerClient({ eventId }: ScannerProps) {
     }
   }
 
-  if (cameraError) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-red-50 text-red-500 mb-4">
-          <X className="h-7 w-7" />
-        </div>
-        <p className="text-sm font-medium text-slate-700">{cameraError}</p>
-        <p className="mt-1 text-xs text-slate-400">
-          Assurez-vous d&apos;utiliser HTTPS ou localhost et d&apos;autoriser la
-          caméra.
-        </p>
-      </div>
-    );
-  }
-
   return (
-    <div className="mx-auto max-w-lg">
-      <div className="mb-4 flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
-          <Scan className="h-5 w-5" />
+    <div className="mx-auto max-w-lg space-y-6">
+      {!cameraEnabled && (
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+          <div className="mb-3 flex items-center gap-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+              <Search className="h-4.5 w-4.5" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-slate-800">
+                Rechercher un invité
+              </h2>
+              <p className="text-xs text-slate-500">
+                Tapez un nom puis cliquez sur un invité pour ouvrir sa fiche.
+              </p>
+            </div>
+          </div>
+
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Ex: Marie Dupont"
+              className="pl-9"
+            />
+          </div>
+
+          <div className="mt-3 max-h-64 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50/70">
+            {loadingGuests ? (
+              <div className="flex items-center justify-center gap-2 py-8 text-sm text-slate-500">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Chargement des invités...
+              </div>
+            ) : guestsError ? (
+              <div className="px-4 py-6 text-center text-sm text-red-600">
+                {guestsError}
+              </div>
+            ) : filteredGuests.length === 0 ? (
+              <div className="px-4 py-6 text-center text-sm text-slate-500">
+                Aucun invité ne correspond à cette recherche.
+              </div>
+            ) : (
+              <ul className="divide-y divide-slate-200">
+                {filteredGuests.map((guest) => (
+                  <li key={guest.id}>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectGuest(guest)}
+                      className="w-full px-4 py-3 text-left hover:bg-white transition-colors hover:cursor-pointer"
+                    >
+                      <p className="text-sm font-medium text-slate-800">
+                        {guest.name}
+                      </p>
+                      <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
+                        <span>
+                          {guest.tableName
+                            ? `Table ${guest.tableName}`
+                            : "Sans table"}
+                        </span>
+                        {guest.checkedInAt && (
+                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 font-medium text-emerald-700">
+                            Déjà arrivé
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
-        <div>
-          <h2 className="text-sm font-bold text-slate-800">
-            Scanner un code QR
-          </h2>
-          <p className="text-xs text-slate-400">
-            Pointez la caméra vers le QR code de l&apos;invitation
-          </p>
+      )}
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
+            <Scan className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="text-sm font-bold text-slate-800">
+              Scanner un code QR
+            </h2>
+            <p className="text-xs text-slate-400">
+              Activez la caméra uniquement si vous souhaitez scanner un QR code.
+            </p>
+          </div>
         </div>
+
+        <Button
+          type="button"
+          onClick={() => {
+            if (cameraEnabled) {
+              setCameraEnabled(false);
+              setCameraError(null);
+              return;
+            }
+            setCameraEnabled(true);
+          }}
+          className={
+            cameraEnabled
+              ? "h-10 rounded-xl bg-[#1e57f5] border border-slate-200 text-sm font-medium text-white hover:bg-[#0a2769]"
+              : "h-10 rounded-xl bg-[#1E5FF5] text-white text-sm font-medium hover:bg-[#154ED0]"
+          }
+        >
+          {cameraEnabled ? (
+            <X className="mr-2 h-4 w-4" />
+          ) : (
+            <Scan className="mr-2 h-4 w-4" />
+          )}
+          {cameraEnabled ? "Recherche manuelle" : "Ouvrir le scanner"}
+        </Button>
+
+        {cameraEnabled && (
+          <>
+            {cameraError ? (
+              <div className="flex flex-col items-center justify-center rounded-xl border border-red-100 bg-red-50 px-4 py-8 text-center">
+                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-white text-red-500">
+                  <X className="h-5 w-5" />
+                </div>
+                <p className="text-sm font-medium text-red-700">
+                  {cameraError}
+                </p>
+                <p className="mt-1 text-xs text-red-600/80">
+                  Assurez-vous d&apos;utiliser HTTPS ou localhost et
+                  d&apos;autoriser la caméra.
+                </p>
+              </div>
+            ) : (
+              <>
+                <div
+                  id="scanner-container"
+                  className="overflow-hidden rounded-2xl bg-black"
+                  style={{ minHeight: "50vh" }}
+                />
+
+                {!scanning && (
+                  <div className="mt-4 flex items-center justify-center gap-2 text-sm text-slate-500">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Initialisation de la caméra...
+                  </div>
+                )}
+
+                {scanning && (
+                  <p className="mt-3 text-center text-xs text-slate-400">
+                    La caméra est active. Scannez un QR code d&apos;invitation.
+                  </p>
+                )}
+              </>
+            )}
+          </>
+        )}
       </div>
-
-      <div
-        ref={containerRef}
-        id="scanner-container"
-        className="overflow-hidden rounded-2xl bg-black"
-        style={{ minHeight: "50vh" }}
-      />
-
-      {!scanning && !cameraError && (
-        <div className="mt-4 flex items-center justify-center gap-2 text-sm text-slate-500">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Initialisation de la caméra...
-        </div>
-      )}
-
-      {scanning && (
-        <p className="mt-3 text-center text-xs text-slate-400">
-          La caméra est active. Scannez un QR code d&apos;invitation.
-        </p>
-      )}
 
       <Dialog
         open={!!scannedToken}
         onOpenChange={(o) => !o && handleCloseDialog()}
       >
-        <DialogContent className="max-w-sm w-full rounded-[24px] bg-white p-6 shadow-2xl border-none gap-0 overflow-hidden outline-none">
+        <DialogContent className="max-w-sm w-full rounded-3xl bg-white p-6 shadow-2xl border-none gap-0 overflow-hidden outline-none">
           <DialogHeader className="pb-4 border-b border-[#E8ECF4] mb-4">
             <DialogTitle className="text-[18px] font-bold text-slate-800">
-              {confirmed ? "Présence confirmée" : "Invité scanné"}
+              {confirmed
+                ? "Présence confirmée"
+                : lookupSource === "scan"
+                  ? "Invité scanné"
+                  : "Invité sélectionné"}
             </DialogTitle>
           </DialogHeader>
 
@@ -220,7 +442,7 @@ export function ScannerClient({ eventId }: ScannerProps) {
                 onClick={handleCloseDialog}
                 className="w-full h-10 rounded-xl bg-[#1E5FF5] text-white text-sm font-medium hover:bg-[#154ED0] cursor-pointer"
               >
-                Scanner un autre code
+                Fermer
               </Button>
             </div>
           ) : guestInfo ? (

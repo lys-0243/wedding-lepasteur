@@ -33,7 +33,13 @@ export async function GET(_req: NextRequest, { params }: RouteContext) {
     name: t.name,
     capacity: t.capacity,
     _count: {
-      guests: t.guests.reduce((sum, g) => sum + (g.invitationType === "COUPLE" || g.invitationType === "DUO" ? 2 : 1), 0),
+      guests: t.guests.reduce((sum, g) => {
+        const invitationType = String(g.invitationType).toUpperCase();
+        return (
+          sum +
+          (invitationType === "COUPLE" || invitationType === "DUO" ? 2 : 1)
+        );
+      }, 0),
     },
   }));
 
@@ -54,7 +60,10 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
   const body = await req.json();
   const parsed = createTableSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    return NextResponse.json(
+      { error: parsed.error.flatten() },
+      { status: 400 },
+    );
   }
 
   const { name, capacity } = parsed.data;
@@ -68,12 +77,12 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
         ...table,
         _count: { guests: 0 },
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch {
     return NextResponse.json(
       { error: "Une table avec ce nom existe déjà." },
-      { status: 409 }
+      { status: 409 },
     );
   }
 }
