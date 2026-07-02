@@ -461,7 +461,7 @@ export function TablesClient({ eventId, initialTables }: Props) {
       {/* ── Table list ────────────────────────────────────────────────────── */}
       <div className="mt-4 overflow-x-auto rounded-2xl border border-[#E8ECF4] bg-white shadow-sm">
         {/* Table head */}
-        <div className="min-w-[600px] grid grid-cols-[auto_1fr_120px_100px_140px] items-center border-b border-[#E8ECF4] bg-slate-50/60 px-5 py-3 text-[0.7rem] font-bold uppercase tracking-widest text-slate-400">
+        <div className="min-w-150 grid grid-cols-[auto_1fr_120px_100px_140px] items-center border-b border-[#E8ECF4] bg-slate-50/60 px-5 py-3 text-[0.7rem] font-bold uppercase tracking-widest text-slate-400">
           <span className="w-8" />
           <span>Nom</span>
           <span className="text-center">Capacité</span>
@@ -504,7 +504,7 @@ export function TablesClient({ eventId, initialTables }: Props) {
               return (
                 <li
                   key={table.id}
-                  className={`min-w-[600px] grid grid-cols-[auto_1fr_120px_100px_140px] items-center gap-2 px-5 py-3.5 transition-colors hover:bg-slate-50/60 ${
+                  className={`min-w-150 grid grid-cols-[auto_1fr_120px_100px_140px] items-center gap-2 px-5 py-3.5 transition-colors hover:bg-slate-50/60 ${
                     i !== filtered.length - 1 ? "border-b border-[#E8ECF4]" : ""
                   }`}
                 >
@@ -595,7 +595,7 @@ export function TablesClient({ eventId, initialTables }: Props) {
 
       {/* ── Create dialog ───────────────────────────────────────────────────── */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-md w-full rounded-[24px] bg-white p-6 shadow-2xl border-none gap-0 overflow-hidden outline-none">
+        <DialogContent className="max-w-md w-full rounded-3xl bg-white p-6 shadow-2xl border-none gap-0 overflow-hidden outline-none">
           <DialogHeader className="pb-4 border-b border-[#E8ECF4] mb-5">
             <DialogTitle className="text-[18px] font-bold text-slate-800">
               Nouvelle table
@@ -638,7 +638,7 @@ export function TablesClient({ eventId, initialTables }: Props) {
                 className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-[14px] outline-none transition-all focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 shadow-xs placeholder-slate-400"
               />
             </div>
-            <DialogFooter className="bg-[#F8FAFC] border-t border-[#E8ECF4] px-6 py-4 flex justify-end gap-3 rounded-b-[24px] -mx-6 -mb-6 mt-6">
+            <DialogFooter className="bg-[#F8FAFC] border-t border-[#E8ECF4] px-6 py-4 flex justify-end gap-3 rounded-b-3xl -mx-6 -mb-6 mt-6">
               <Button
                 type="button"
                 onClick={() => setCreateOpen(false)}
@@ -670,7 +670,7 @@ export function TablesClient({ eventId, initialTables }: Props) {
 
       {/* ── Edit dialog ─────────────────────────────────────────────────────── */}
       <Dialog open={!!editTable} onOpenChange={(o) => !o && setEditTable(null)}>
-        <DialogContent className="max-w-md w-full rounded-[24px] bg-white p-6 shadow-2xl border-none gap-0 overflow-hidden outline-none">
+        <DialogContent className="max-w-md w-full rounded-3xl bg-white p-6 shadow-2xl border-none gap-0 overflow-hidden outline-none">
           <DialogHeader className="pb-4 border-b border-[#E8ECF4] mb-5">
             <DialogTitle className="text-[18px] font-bold text-slate-800">
               Modifier la table
@@ -711,7 +711,7 @@ export function TablesClient({ eventId, initialTables }: Props) {
                 className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-[14px] outline-none transition-all focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50 shadow-xs placeholder-slate-400"
               />
             </div>
-            <DialogFooter className="bg-[#F8FAFC] border-t border-[#E8ECF4] px-6 py-4 flex justify-end gap-3 rounded-b-[24px] -mx-6 -mb-6 mt-6">
+            <DialogFooter className="bg-[#F8FAFC] border-t border-[#E8ECF4] px-6 py-4 flex justify-end gap-3 rounded-b-3xl -mx-6 -mb-6 mt-6">
               <Button
                 type="button"
                 onClick={() => setEditTable(null)}
@@ -744,7 +744,7 @@ export function TablesClient({ eventId, initialTables }: Props) {
         open={!!deleteTable}
         onOpenChange={(o) => !o && setDeleteTable(null)}
       >
-        <DialogContent className="max-w-md w-full rounded-[24px] bg-white p-6 shadow-2xl border-none gap-0 overflow-hidden outline-none">
+        <DialogContent className="max-w-md w-full rounded-3xl bg-white p-6 shadow-2xl border-none gap-0 overflow-hidden outline-none">
           <DialogHeader className="pb-4 border-b border-[#E8ECF4] mb-5">
             <DialogTitle className="text-[18px] font-bold text-slate-800">
               Supprimer la table
@@ -777,7 +777,7 @@ export function TablesClient({ eventId, initialTables }: Props) {
               </p>
             )}
           </div>
-          <DialogFooter className="bg-[#F8FAFC] border-t border-[#E8ECF4] px-6 py-4 flex justify-end gap-3 rounded-b-[24px] -mx-6 -mb-6 mt-6">
+          <DialogFooter className="bg-[#F8FAFC] border-t border-[#E8ECF4] px-6 py-4 flex justify-end gap-3 rounded-b-3xl -mx-6 -mb-6 mt-6">
             <Button
               type="button"
               onClick={() => setDeleteTable(null)}
@@ -807,7 +807,7 @@ export function TablesClient({ eventId, initialTables }: Props) {
           }
         }}
       >
-        <DialogContent className="max-w-lg w-full rounded-[24px] bg-white p-6 shadow-2xl border-none gap-0 overflow-hidden outline-none">
+        <DialogContent className="max-w-lg w-full rounded-3xl bg-white p-6 shadow-2xl border-none gap-0 overflow-hidden outline-none">
           <DialogHeader className="pb-4 border-b border-[#E8ECF4] mb-4">
             <DialogTitle className="text-[18px] font-bold text-slate-800">
               Importer des tables
@@ -861,7 +861,7 @@ export function TablesClient({ eventId, initialTables }: Props) {
               </div>
             ) : (
               // Step 2: Mapping and Preview (Image 2 style)
-              <div className="space-y-4 max-h-[380px] overflow-y-auto pr-1">
+              <div className="space-y-4 max-h-95 overflow-y-auto pr-1">
                 {/* File badge with delete icon */}
                 <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-3">
                   <div className="flex items-center gap-2.5 min-w-0">
@@ -971,7 +971,7 @@ export function TablesClient({ eventId, initialTables }: Props) {
                               key={idx}
                               className="border-b border-slate-100 last:border-none"
                             >
-                              <td className="px-3 py-2 text-slate-700 font-medium truncate max-w-[200px]">
+                              <td className="px-3 py-2 text-slate-700 font-medium truncate max-w-50">
                                 {row.name || (
                                   <span className="text-slate-400 italic">
                                     Vide
@@ -992,7 +992,7 @@ export function TablesClient({ eventId, initialTables }: Props) {
             )}
           </div>
 
-          <DialogFooter className="bg-[#F8FAFC] border-t border-[#E8ECF4] px-6 py-4 flex justify-end gap-3 rounded-b-[24px] -mx-6 -mb-6 mt-6">
+          <DialogFooter className="bg-[#F8FAFC] border-t border-[#E8ECF4] px-6 py-4 flex justify-end gap-3 rounded-b-3xl -mx-6 -mb-6 mt-6">
             <Button
               type="button"
               onClick={() => {

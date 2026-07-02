@@ -15,10 +15,11 @@ export const metadata: Metadata = {
   },
   description:
     "Plateforme de gestion de mariage : invités, plan de table, boissons et invitations",
-  icons: [
-    { rel: "icon", url: "/logo_icon.png", type: "image/png" },
-    { rel: "apple-touch-icon", url: "/logo_icon.png" },
-  ],
+  icons: {
+    icon: "/logo_icon.png",
+    shortcut: "/logo_icon.png",
+    apple: "/logo_icon.png",
+  },
 };
 
 export default function RootLayout({
