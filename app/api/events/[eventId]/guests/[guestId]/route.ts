@@ -53,6 +53,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     },
     select: {
       id: true,
+      token: true,
       firstName: true,
       lastName: true,
       email: true,
@@ -63,12 +64,18 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       rsvpStatus: true,
       plusOneRsvpStatus: true,
       respondedAt: true,
+      checkedInAt: true,
       createdAt: true,
       table: { select: { id: true, name: true } },
     },
   });
 
-  return NextResponse.json(updated);
+  return NextResponse.json({
+    ...updated,
+    respondedAt: updated.respondedAt?.toISOString() ?? null,
+    checkedInAt: updated.checkedInAt?.toISOString() ?? null,
+    createdAt: updated.createdAt.toISOString(),
+  });
 }
 
 // DELETE /api/events/[eventId]/guests/[guestId] — delete a guest permanently

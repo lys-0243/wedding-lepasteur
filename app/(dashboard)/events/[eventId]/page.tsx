@@ -5,6 +5,10 @@ import {
   Users,
   Armchair,
   GlassWater,
+  CheckCircle2,
+  UserCheck,
+  Clock,
+  UserX,
 } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -25,6 +29,10 @@ function formatDate(date: Date | null) {
   }).format(date);
 }
 
+function guestHeads(invitationType: string) {
+  return invitationType === "COUPLE" || invitationType === "DUO" ? 2 : 1;
+}
+
 export default async function EventDashboardPage({ params }: EventPageProps) {
   const user = await requireUser();
   const { eventId } = await params;
@@ -42,10 +50,56 @@ export default async function EventDashboardPage({ params }: EventPageProps) {
       _count: {
         select: { guests: true, eventDrinks: true, tables: true },
       },
+      guests: {
+        select: { rsvpStatus: true, invitationType: true },
+      },
+      tables: {
+        select: { capacity: true },
+      },
     },
   });
 
   if (!event) notFound();
+
+  const totalFiches = event.guests.length;
+  let pending = 0;
+  let confirmed = 0;
+  let declined = 0;
+  let present = 0;
+  let confirmedHeads = 0;
+  let presentHeads = 0;
+  let engagedHeads = 0;
+
+  for (const g of event.guests) {
+    const heads = guestHeads(g.invitationType);
+    switch (g.rsvpStatus) {
+      case "PENDING":
+        pending += 1;
+        break;
+      case "CONFIRMED":
+        confirmed += 1;
+        confirmedHeads += heads;
+        engagedHeads += heads;
+        break;
+      case "DECLINED":
+        declined += 1;
+        break;
+      case "PRESENT":
+        present += 1;
+        presentHeads += heads;
+        engagedHeads += heads;
+        break;
+    }
+  }
+
+  const responded = confirmed + declined + present;
+  const responseRate =
+    totalFiches > 0 ? Math.round((responded / totalFiches) * 100) : 0;
+  const totalCapacity = event.tables.reduce((s, t) => s + t.capacity, 0);
+  const capacityPct =
+    totalCapacity > 0
+      ? Math.min(Math.round((engagedHeads / totalCapacity) * 100), 100)
+      : 0;
 
   const stats = [
     {
@@ -69,6 +123,44 @@ export default async function EventDashboardPage({ params }: EventPageProps) {
       color: "text-emerald-500",
       bg: "bg-emerald-50",
     },
+    {
+      label: "Présents",
+      value: presentHeads,
+      icon: CheckCircle2,
+      color: "text-sky-500",
+      bg: "bg-sky-50",
+    },
+  ];
+
+  const rsvpBreakdown = [
+    {
+      label: "Confirmés",
+      count: confirmed,
+      icon: UserCheck,
+      color: "text-emerald-600",
+      bg: "bg-emerald-50",
+    },
+    {
+      label: "En attente",
+      count: pending,
+      icon: Clock,
+      color: "text-amber-600",
+      bg: "bg-amber-50",
+    },
+    {
+      label: "Déclinés",
+      count: declined,
+      icon: UserX,
+      color: "text-red-600",
+      bg: "bg-red-50",
+    },
+    {
+      label: "Présents",
+      count: present,
+      icon: CheckCircle2,
+      color: "text-sky-600",
+      bg: "bg-sky-50",
+    },
   ];
 
   return (
@@ -83,13 +175,11 @@ export default async function EventDashboardPage({ params }: EventPageProps) {
             className="h-full w-full object-cover"
           />
         )}
-        {/* Subtle gradient overlay at the bottom for readability */}
         <div className="absolute inset-x-0 bottom-0 h-24 bg-linear-to-t from-black/30 to-transparent" />
       </div>
 
       {/* ── Profile strip (avatar + title) ──────────────────────────── */}
       <div className="relative border-b border-[#E8ECF4] bg-white px-6 pb-4 lg:px-8">
-        {/* Profile image — overlaps cover */}
         <div className="absolute -top-12 left-6 lg:left-8">
           {event.profileImageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -107,7 +197,6 @@ export default async function EventDashboardPage({ params }: EventPageProps) {
           )}
         </div>
 
-        {/* Title + meta — shifted right to clear the avatar */}
         <div className="flex flex-col justify-end pt-16 sm:flex-row sm:items-end sm:justify-between sm:pt-4 sm:pl-36 lg:pl-40">
           <div>
             <h1 className="text-xl font-bold tracking-tight text-slate-800 lg:text-2xl">
@@ -131,8 +220,7 @@ export default async function EventDashboardPage({ params }: EventPageProps) {
 
       {/* ── Page body ───────────────────────────────────────────────── */}
       <div className="p-6 lg:p-8">
-        {/* Stats */}
-        <div className="mb-6 grid gap-3 sm:grid-cols-3">
+        <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {stats.map(({ label, value, icon: Icon, color, bg }) => (
             <div
               key={label}
@@ -151,7 +239,79 @@ export default async function EventDashboardPage({ params }: EventPageProps) {
           ))}
         </div>
 
-        {/* Description */}
+        <div className="mb-6 grid gap-4 lg:grid-cols-2">
+          {/* Response rate */}
+          <div className="rounded-2xl border border-[#E8ECF4] bg-white p-5 shadow-sm">
+            <p className="mb-1 text-[0.65rem] font-bold uppercase tracking-widest text-slate-400">
+              Taux de réponse
+            </p>
+            <p className="text-3xl font-bold text-slate-800">
+              {responseRate}
+              <span className="text-lg font-semibold text-slate-400">%</span>
+            </p>
+            <p className="mt-1 text-sm text-slate-500">
+              {responded} réponse{responded !== 1 ? "s" : ""} sur {totalFiches}{" "}
+              fiche{totalFiches !== 1 ? "s" : ""}
+            </p>
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+              <div
+                className="h-full rounded-full bg-[#534AB7] transition-all"
+                style={{ width: `${responseRate}%` }}
+              />
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {rsvpBreakdown.map(({ label, count, icon: Icon, color, bg }) => (
+                <div
+                  key={label}
+                  className={`flex items-center gap-2 rounded-xl ${bg} px-2.5 py-2`}
+                >
+                  <Icon className={`h-3.5 w-3.5 shrink-0 ${color}`} />
+                  <div className="min-w-0">
+                    <p className={`text-sm font-bold ${color}`}>{count}</p>
+                    <p className="truncate text-[10px] text-slate-500">
+                      {label}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Capacity gauge */}
+          <div className="rounded-2xl border border-[#E8ECF4] bg-white p-5 shadow-sm">
+            <p className="mb-1 text-[0.65rem] font-bold uppercase tracking-widest text-slate-400">
+              Capacité engagée
+            </p>
+            <p className="text-3xl font-bold text-slate-800">
+              {engagedHeads}
+              <span className="text-lg font-semibold text-slate-400">
+                {" "}
+                / {totalCapacity}
+              </span>
+            </p>
+            <p className="mt-1 text-sm text-slate-500">
+              {confirmedHeads} confirmé{confirmedHeads !== 1 ? "s" : ""} +{" "}
+              {presentHeads} présent{presentHeads !== 1 ? "s" : ""} vs places
+              aux tables
+            </p>
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+              <div
+                className={`h-full rounded-full transition-all ${
+                  capacityPct >= 90
+                    ? "bg-red-400"
+                    : capacityPct >= 60
+                      ? "bg-amber-400"
+                      : "bg-emerald-400"
+                }`}
+                style={{ width: `${capacityPct}%` }}
+              />
+            </div>
+            <p className="mt-2 text-xs text-slate-400">
+              {capacityPct}% des places couvertes
+            </p>
+          </div>
+        </div>
+
         {event.description && (
           <div className="rounded-2xl border border-[#E8ECF4] bg-white p-5 shadow-sm">
             <p className="mb-2 text-[0.65rem] font-bold uppercase tracking-widest text-slate-400">

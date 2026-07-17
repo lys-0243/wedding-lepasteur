@@ -53,9 +53,10 @@ type Guest = {
   invitationType: "SINGLE" | "COUPLE" | "DUO";
   plusOneFirstName: string | null;
   plusOneLastName: string | null;
-  rsvpStatus: "PENDING" | "CONFIRMED" | "DECLINED";
-  plusOneRsvpStatus: "PENDING" | "CONFIRMED" | "DECLINED" | null;
+  rsvpStatus: "PENDING" | "CONFIRMED" | "DECLINED" | "PRESENT";
+  plusOneRsvpStatus: "PENDING" | "CONFIRMED" | "DECLINED" | "PRESENT" | null;
   respondedAt: string | null;
+  checkedInAt: string | null;
   createdAt: string;
   table: GuestTable;
 };
@@ -74,26 +75,43 @@ const RSVP_LABELS: Record<string, string> = {
   PENDING: "En attente",
   CONFIRMED: "Confirmé",
   DECLINED: "Décliné",
+  PRESENT: "Présent",
 };
 
 const RSVP_STYLES: Record<string, string> = {
   PENDING: "bg-amber-50 text-amber-700 border border-amber-200",
   CONFIRMED: "bg-emerald-50 text-emerald-700 border border-emerald-200",
   DECLINED: "bg-red-50 text-red-600 border border-red-200",
+  PRESENT: "bg-sky-50 text-sky-700 border border-sky-200",
 };
 
 const RSVP_ICONS: Record<string, React.ReactNode> = {
   PENDING: <Clock className="h-3 w-3" />,
   CONFIRMED: <UserCheck className="h-3 w-3" />,
   DECLINED: <UserX className="h-3 w-3" />,
+  PRESENT: <CheckCircle2 className="h-3 w-3" />,
 };
 
 function formatDate(iso: string) {
   return new Intl.DateTimeFormat("fr-FR", {
-    day: "2-digit",
-    month: "short",
+    day: "numeric",
+    month: "long",
     year: "numeric",
   }).format(new Date(iso));
+}
+
+function formatDateTime(iso: string) {
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(iso));
+}
+
+function guestHeads(g: { invitationType: string }) {
+  return g.invitationType === "COUPLE" || g.invitationType === "DUO" ? 2 : 1;
 }
 
 export function GuestsClient({ eventId, initialGuests, event }: Props) {
@@ -224,11 +242,13 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
   const confirmed = guests.filter((g) => g.rsvpStatus === "CONFIRMED").length;
   const declined = guests.filter((g) => g.rsvpStatus === "DECLINED").length;
   const pending = guests.filter((g) => g.rsvpStatus === "PENDING").length;
+  const present = guests.filter((g) => g.rsvpStatus === "PRESENT").length;
+  const noShow = confirmed; // CONFIRMED = not yet scanned to PRESENT
 
-  const totalAttendees = guests.reduce(
-    (sum, g) => sum + (g.invitationType === "COUPLE" || g.invitationType === "DUO" ? 2 : 1),
-    0,
-  );
+  const totalAttendees = guests.reduce((sum, g) => sum + guestHeads(g), 0);
+  const presentHeads = guests
+    .filter((g) => g.rsvpStatus === "PRESENT")
+    .reduce((sum, g) => sum + guestHeads(g), 0);
 
   // ── Filters ────────────────────────────────────────────────────────────────
   const filtered = guests.filter((g) => {
@@ -242,7 +262,12 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
       (g.plusOneLastName ?? "").toLowerCase().includes(q) ||
       (g.table?.name ?? "").toLowerCase().includes(q);
 
-    const matchStatus = statusFilter === "ALL" || g.rsvpStatus === statusFilter;
+    const matchStatus =
+      statusFilter === "ALL"
+        ? true
+        : statusFilter === "NOSHOW"
+          ? g.rsvpStatus === "CONFIRMED"
+          : g.rsvpStatus === statusFilter;
 
     return matchSearch && matchStatus;
   });
@@ -271,6 +296,18 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
       label: "Déclinés",
       count: declined,
       color: "text-red-600",
+    },
+    {
+      key: "PRESENT",
+      label: "Présents",
+      count: present,
+      color: "text-sky-600",
+    },
+    {
+      key: "NOSHOW",
+      label: "No-show",
+      count: noShow,
+      color: "text-orange-600",
     },
   ];
 
@@ -313,7 +350,16 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
       }
       setGuests((prev) =>
         prev
-          .map((g) => (g.id === data.id ? data : g))
+          .map((g) =>
+            g.id === data.id
+              ? {
+                  ...g,
+                  ...data,
+                  token: data.token ?? g.token,
+                  checkedInAt: data.checkedInAt ?? g.checkedInAt ?? null,
+                }
+              : g,
+          )
           .sort((a, b) => a.lastName.localeCompare(b.lastName)),
       );
       setEditGuest(null);
@@ -372,9 +418,23 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
         return;
       }
       setGuests((prev) =>
-        [...prev, { ...data, table: null }].sort((a, b) =>
-          a.lastName.localeCompare(b.lastName),
-        ),
+        [
+          ...prev,
+          {
+            ...data,
+            table: null,
+            checkedInAt: data.checkedInAt ?? null,
+            respondedAt: data.respondedAt
+              ? typeof data.respondedAt === "string"
+                ? data.respondedAt
+                : new Date(data.respondedAt).toISOString()
+              : null,
+            createdAt:
+              typeof data.createdAt === "string"
+                ? data.createdAt
+                : new Date(data.createdAt).toISOString(),
+          },
+        ].sort((a, b) => a.lastName.localeCompare(b.lastName)),
       );
       setCreateOpen(false);
       resetCreateForm();
@@ -397,9 +457,7 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
   function handleExportExcel() {
     try {
       const exportData = guests.map((g) => {
-        let rsvpLabel = "En attente";
-        if (g.rsvpStatus === "CONFIRMED") rsvpLabel = "Confirmé";
-        if (g.rsvpStatus === "DECLINED") rsvpLabel = "Décliné";
+        const rsvpLabel = RSVP_LABELS[g.rsvpStatus] ?? "En attente";
 
         return {
           Prénom: g.firstName,
@@ -411,6 +469,7 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
           "Accompagnateur Prénom": g.plusOneFirstName || "",
           "Accompagnateur Nom": g.plusOneLastName || "",
           "Statut RSVP": rsvpLabel,
+          Arrivée: g.checkedInAt ? formatDateTime(g.checkedInAt) : "",
           Table: g.table?.name || "Non assigné",
         };
       });
@@ -422,6 +481,36 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
     } catch (err) {
       console.error(err);
       toast.error("Impossible d'exporter la liste des invités.");
+    }
+  }
+
+  function handleExportNoShow() {
+    try {
+      const noShows = guests.filter((g) => g.rsvpStatus === "CONFIRMED");
+      if (noShows.length === 0) {
+        toast.error("Aucun no-show à exporter.");
+        return;
+      }
+      const exportData = noShows.map((g) => ({
+        Prénom: g.firstName,
+        Nom: g.lastName,
+        Email: g.email || "",
+        Téléphone: g.phone || "",
+        "Type d'invitation":
+          g.invitationType === "COUPLE" ? "Couple" : g.invitationType === "DUO" ? "Duo" : "Seul",
+        "Accompagnateur Prénom": g.plusOneFirstName || "",
+        "Accompagnateur Nom": g.plusOneLastName || "",
+        "Statut RSVP": "Confirmé (absent)",
+        Table: g.table?.name || "Non assigné",
+      }));
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "No-show");
+      XLSX.writeFile(workbook, `no-show-evenement-${eventId}.xlsx`);
+      toast.success("La liste des no-shows a été exportée.");
+    } catch (err) {
+      console.error(err);
+      toast.error("Impossible d'exporter les no-shows.");
     }
   }
 
@@ -685,7 +774,8 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
           <p className="mt-0.5 text-sm text-slate-500">
             {guests.length} fiche{guests.length !== 1 ? "s" : ""} ·{" "}
             {totalAttendees} personne
-            {totalAttendees !== 1 ? "s" : ""} au total
+            {totalAttendees !== 1 ? "s" : ""} au total ·{" "}
+            {presentHeads} présente{presentHeads !== 1 ? "s" : ""}
           </p>
         </div>
 
@@ -712,6 +802,18 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
             <Download className="h-4 w-4" />
             <span className="hidden sm:inline">Exporter Excel</span>
             <span className="sm:hidden">Export</span>
+          </Button>
+
+          {/* Export no-show */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportNoShow}
+            className="gap-2 border-[#E8ECF4] text-slate-600 hover:bg-slate-50 cursor-pointer h-10 px-4 rounded-xl"
+          >
+            <UserX className="h-4 w-4" />
+            <span className="hidden sm:inline">Exporter no-show</span>
+            <span className="sm:hidden">No-show</span>
           </Button>
 
           {/* Ajouter un invité */}
@@ -1018,6 +1120,13 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
                   </span>
                 </div>
               </div>
+
+              {viewGuest.checkedInAt && (
+                <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                  <Calendar className="h-3.5 w-3.5 shrink-0" />
+                  Arrivé à : {formatDateTime(viewGuest.checkedInAt)}
+                </div>
+              )}
 
               {viewGuest.respondedAt && (
                 <div className="flex items-center gap-1.5 text-xs text-slate-400">

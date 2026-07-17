@@ -48,12 +48,20 @@ export async function GET(req: NextRequest, { params }: RouteContext) {
       rsvpStatus: true,
       plusOneRsvpStatus: true,
       respondedAt: true,
+      checkedInAt: true,
       createdAt: true,
       table: { select: { id: true, name: true } },
     },
   });
 
-  return NextResponse.json(guests);
+  return NextResponse.json(
+    guests.map((g) => ({
+      ...g,
+      respondedAt: g.respondedAt?.toISOString() ?? null,
+      checkedInAt: g.checkedInAt?.toISOString() ?? null,
+      createdAt: g.createdAt.toISOString(),
+    })),
+  );
 }
 
 // POST /api/events/[eventId]/guests — create a guest at the event level (unassigned to a table)
