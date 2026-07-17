@@ -131,6 +131,7 @@ enum RsvpStatus {
   PENDING
   CONFIRMED
   DECLINED
+  PRESENT
 }
 
 enum DrinkAssignee {

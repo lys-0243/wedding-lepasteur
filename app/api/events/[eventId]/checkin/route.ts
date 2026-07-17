@@ -33,6 +33,7 @@ export async function GET(_req: NextRequest, { params }: RouteContext) {
       checkedInAt: true,
       eventId: true,
       invitationType: true,
+      plusOneRsvpStatus: true,
       table: { select: { name: true } },
     },
   });
@@ -50,9 +51,15 @@ export async function GET(_req: NextRequest, { params }: RouteContext) {
       : `${guest.firstName} ${guest.lastName}`.trim();
 
   const now = new Date();
+  const isPair =
+    guest.invitationType === "COUPLE" || guest.invitationType === "DUO";
   await prisma.guest.update({
     where: { id: guest.id },
-    data: { checkedInAt: now },
+    data: {
+      checkedInAt: now,
+      rsvpStatus: "PRESENT",
+      ...(isPair ? { plusOneRsvpStatus: "PRESENT" } : {}),
+    },
   });
 
   const timeStr = now.toLocaleTimeString("fr-FR", {
@@ -148,6 +155,7 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
       invitationType: true,
       checkedInAt: true,
       eventId: true,
+      plusOneRsvpStatus: true,
       table: { select: { name: true } },
     },
   });
@@ -160,10 +168,109 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
   }
 
   const now = new Date();
-  await prisma.guest.update({
-    where: { id: guest.id },
-    data: { checkedInAt: now },
-  });
+  const isPair =
+    guest.invitationType === "COUPLE" || guest.invitationType === "DUO";
+
+  // #region agent log
+  let runtimeEnumKeys: string[] = [];
+  try {
+    const enums = await import("@/generated/prisma/enums");
+    runtimeEnumKeys = Object.keys(enums.RsvpStatus ?? {});
+  } catch (e) {
+    runtimeEnumKeys = [`import_error:${e instanceof Error ? e.message : "unknown"}`];
+  }
+  let dbEnumLabels: string[] = [];
+  try {
+    const rows = await prisma.$queryRaw<{ enumlabel: string }[]>`
+      SELECT e.enumlabel
+      FROM pg_enum e
+      JOIN pg_type t ON e.enumtypid = t.oid
+      WHERE t.typname = 'RsvpStatus'
+      ORDER BY e.enumsortorder
+    `;
+    dbEnumLabels = rows.map((r) => r.enumlabel);
+  } catch (e) {
+    dbEnumLabels = [`query_error:${e instanceof Error ? e.message : "unknown"}`];
+  }
+  fetch("http://127.0.0.1:7430/ingest/45199c7f-b5a3-42d4-93dd-ac60f6b59c53", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Debug-Session-Id": "6b3bde",
+    },
+    body: JSON.stringify({
+      sessionId: "6b3bde",
+      runId: "pre-fix",
+      hypothesisId: "A",
+      location: "checkin/route.ts:POST:pre-update",
+      message: "Check-in about to set PRESENT",
+      data: {
+        runtimeEnumKeys,
+        runtimeHasPresent: runtimeEnumKeys.includes("PRESENT"),
+        dbEnumLabels,
+        dbHasPresent: dbEnumLabels.includes("PRESENT"),
+        isPair,
+        invitationType: guest.invitationType,
+      },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion
+
+  try {
+    await prisma.guest.update({
+      where: { id: guest.id },
+      data: {
+        checkedInAt: now,
+        rsvpStatus: "PRESENT",
+        ...(isPair ? { plusOneRsvpStatus: "PRESENT" } : {}),
+      },
+    });
+  } catch (err) {
+    // #region agent log
+    fetch("http://127.0.0.1:7430/ingest/45199c7f-b5a3-42d4-93dd-ac60f6b59c53", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Debug-Session-Id": "6b3bde",
+      },
+      body: JSON.stringify({
+        sessionId: "6b3bde",
+        runId: "pre-fix",
+        hypothesisId: "B",
+        location: "checkin/route.ts:POST:update-error",
+        message: "Check-in update failed",
+        data: {
+          errorName: err instanceof Error ? err.name : "unknown",
+          errorMessage: err instanceof Error ? err.message.slice(0, 500) : String(err),
+          runtimeHasPresent: runtimeEnumKeys.includes("PRESENT"),
+          dbHasPresent: dbEnumLabels.includes("PRESENT"),
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
+    throw err;
+  }
+
+  // #region agent log
+  fetch("http://127.0.0.1:7430/ingest/45199c7f-b5a3-42d4-93dd-ac60f6b59c53", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Debug-Session-Id": "6b3bde",
+    },
+    body: JSON.stringify({
+      sessionId: "6b3bde",
+      runId: "pre-fix",
+      hypothesisId: "C",
+      location: "checkin/route.ts:POST:success",
+      message: "Check-in update succeeded",
+      data: { guestId: guest.id, rsvpStatus: "PRESENT" },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion
 
   const displayName =
     guest.invitationType === "COUPLE"
@@ -176,6 +283,7 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
       name: displayName,
       tableName: guest.table?.name ?? null,
       checkedInAt: now.toISOString(),
+      rsvpStatus: "PRESENT",
     },
   });
 }

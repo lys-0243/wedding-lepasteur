@@ -18,13 +18,20 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
 
   const guest = await prisma.guest.findUnique({
     where: { token },
-    select: { id: true, invitationType: true },
+    select: { id: true, invitationType: true, rsvpStatus: true },
   });
 
   if (!guest) {
     return NextResponse.json(
       { error: "Invitation introuvable." },
       { status: 404 },
+    );
+  }
+
+  if (guest.rsvpStatus === "PRESENT") {
+    return NextResponse.json(
+      { error: "Présence déjà enregistrée — la réponse ne peut plus être modifiée." },
+      { status: 409 },
     );
   }
 

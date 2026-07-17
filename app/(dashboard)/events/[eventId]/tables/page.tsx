@@ -31,24 +31,30 @@ export default async function TablesPage({ params }: Props) {
 
   const tables = await prisma.table.findMany({
     where: { eventId },
-    include: { guests: { select: { invitationType: true } } },
+    include: {
+      guests: { select: { invitationType: true, rsvpStatus: true } },
+    },
     orderBy: { name: "asc" },
   });
 
-  const mappedTables = tables.map((table) => ({
-    id: table.id,
-    name: table.name,
-    capacity: table.capacity,
-    _count: {
-      guests: table.guests.reduce((sum, guest) => {
-        const invitationType = String(guest.invitationType).toUpperCase();
-        return (
-          sum +
-          (invitationType === "COUPLE" || invitationType === "DUO" ? 2 : 1)
-        );
-      }, 0),
-    },
-  }));
+  const mappedTables = tables.map((table) => {
+    let assigned = 0;
+    let present = 0;
+    for (const guest of table.guests) {
+      const heads =
+        guest.invitationType === "COUPLE" || guest.invitationType === "DUO"
+          ? 2
+          : 1;
+      assigned += heads;
+      if (guest.rsvpStatus === "PRESENT") present += heads;
+    }
+    return {
+      id: table.id,
+      name: table.name,
+      capacity: table.capacity,
+      _count: { guests: assigned, present },
+    };
+  });
 
   return (
     <div className="min-h-full bg-[#F4F6FB] p-6 lg:p-8">

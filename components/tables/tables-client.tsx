@@ -31,7 +31,7 @@ type TableRow = {
   id: string;
   name: string;
   capacity: number;
-  _count: { guests: number };
+  _count: { guests: number; present: number };
 };
 
 type Props = {
@@ -114,7 +114,8 @@ export function TablesClient({ eventId, initialTables }: Props) {
       const exportData = tables.map((t) => ({
         "Nom de la table": t.name,
         Capacité: t.capacity,
-        "Nombre d'invités": t._count.guests,
+        "Places assignées": t._count.guests,
+        "Places présentes": t._count.present ?? 0,
       }));
       const worksheet = XLSX.utils.json_to_sheet(exportData);
       const workbook = XLSX.utils.book_new();
@@ -186,7 +187,15 @@ export function TablesClient({ eventId, initialTables }: Props) {
       }
       setTables((prev) =>
         prev
-          .map((t) => (t.id === data.id ? data : t))
+          .map((t) =>
+            t.id === data.id
+              ? {
+                  ...t,
+                  name: data.name,
+                  capacity: data.capacity,
+                }
+              : t,
+          )
           .sort((a, b) => a.name.localeCompare(b.name)),
       );
       setEditTable(null);
@@ -375,6 +384,10 @@ export function TablesClient({ eventId, initialTables }: Props) {
 
   const totalCapacity = tables.reduce((acc, t) => acc + t.capacity, 0);
   const totalGuests = tables.reduce((acc, t) => acc + t._count.guests, 0);
+  const totalPresent = tables.reduce(
+    (acc, t) => acc + (t._count.present ?? 0),
+    0,
+  );
 
   // Compute mapped previews
   const previewRows = rawData.slice(0, 5).map((row) => {
@@ -396,10 +409,10 @@ export function TablesClient({ eventId, initialTables }: Props) {
             Tables
           </h1>
           <p className="mt-0.5 text-sm text-slate-500">
-            {tables.length} table{tables.length !== 1 ? "s" : ""} au total ·{" "}
-            {totalGuests} invité{totalGuests > 1 ? "s" : ""} sur {totalCapacity}{" "}
-            place
-            {totalCapacity > 1 ? "s" : ""} prévues
+            {tables.length} table{tables.length !== 1 ? "s" : ""} ·{" "}
+            {totalGuests} assigné{totalGuests !== 1 ? "s" : ""} ·{" "}
+            {totalPresent} présent{totalPresent !== 1 ? "s" : ""} sur{" "}
+            {totalCapacity} place{totalCapacity !== 1 ? "s" : ""}
           </p>
         </div>
 
@@ -465,7 +478,7 @@ export function TablesClient({ eventId, initialTables }: Props) {
           <span className="w-8" />
           <span>Nom</span>
           <span className="text-center">Capacité</span>
-          <span className="text-center">Invités</span>
+          <span className="text-center">Présents</span>
           <span className="text-center">Actions</span>
         </div>
 
@@ -491,15 +504,16 @@ export function TablesClient({ eventId, initialTables }: Props) {
         ) : (
           <ul>
             {filtered.map((table, i) => {
-              const occupancy =
-                table.capacity > 0 ? table._count.guests / table.capacity : 0;
-              const pct = Math.min(Math.round(occupancy * 100), 100);
+              const present = table._count.present ?? 0;
+              const liveOccupancy =
+                table.capacity > 0 ? present / table.capacity : 0;
+              const pct = Math.min(Math.round(liveOccupancy * 100), 100);
               const barColor =
                 pct >= 90
-                  ? "bg-red-400"
+                  ? "bg-sky-500"
                   : pct >= 60
-                    ? "bg-amber-400"
-                    : "bg-emerald-400";
+                    ? "bg-sky-400"
+                    : "bg-sky-300";
 
               return (
                 <li
@@ -526,11 +540,11 @@ export function TablesClient({ eventId, initialTables }: Props) {
                     {table.capacity} places
                   </span>
 
-                  {/* Guests + progress */}
+                  {/* Live present + assigned subline */}
                   <div className="flex flex-col items-center gap-1">
-                    <div className="flex items-center gap-1 text-sm text-slate-600">
-                      <Users className="h-3.5 w-3.5 text-slate-400" />
-                      {table._count.guests}/{table.capacity}
+                    <div className="flex items-center gap-1 text-sm font-medium text-sky-700">
+                      <Users className="h-3.5 w-3.5 text-sky-500" />
+                      {present}/{table.capacity}
                     </div>
                     <div className="h-1 w-16 overflow-hidden rounded-full bg-slate-100">
                       <div
@@ -538,6 +552,10 @@ export function TablesClient({ eventId, initialTables }: Props) {
                         style={{ width: `${pct}%` }}
                       />
                     </div>
+                    <span className="text-[10px] text-slate-400">
+                      {table._count.guests} assigné
+                      {table._count.guests !== 1 ? "s" : ""}
+                    </span>
                   </div>
 
                   {/* Actions */}
