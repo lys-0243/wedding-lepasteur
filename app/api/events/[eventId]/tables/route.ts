@@ -23,25 +23,30 @@ export async function GET(_req: NextRequest, { params }: RouteContext) {
 
   const tables = await prisma.table.findMany({
     where: { eventId },
-    include: { guests: { select: { invitationType: true } } },
+    include: {
+      guests: { select: { invitationType: true, rsvpStatus: true } },
+    },
     orderBy: { name: "asc" },
   });
 
-  const mapped = tables.map((t) => ({
-    id: t.id,
-    eventId: t.eventId,
-    name: t.name,
-    capacity: t.capacity,
-    _count: {
-      guests: t.guests.reduce((sum, g) => {
-        const invitationType = String(g.invitationType).toUpperCase();
-        return (
-          sum +
-          (invitationType === "COUPLE" || invitationType === "DUO" ? 2 : 1)
-        );
-      }, 0),
-    },
-  }));
+  const mapped = tables.map((t) => {
+    let assigned = 0;
+    let present = 0;
+    for (const g of t.guests) {
+      const invitationType = String(g.invitationType).toUpperCase();
+      const heads =
+        invitationType === "COUPLE" || invitationType === "DUO" ? 2 : 1;
+      assigned += heads;
+      if (g.rsvpStatus === "PRESENT") present += heads;
+    }
+    return {
+      id: t.id,
+      eventId: t.eventId,
+      name: t.name,
+      capacity: t.capacity,
+      _count: { guests: assigned, present },
+    };
+  });
 
   return NextResponse.json(mapped);
 }
@@ -75,7 +80,7 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
     return NextResponse.json(
       {
         ...table,
-        _count: { guests: 0 },
+        _count: { guests: 0, present: 0 },
       },
       { status: 201 },
     );

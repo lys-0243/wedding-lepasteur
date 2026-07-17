@@ -46,6 +46,7 @@ export default async function GuestsPage({ params }: GuestsPageProps) {
       rsvpStatus: true,
       plusOneRsvpStatus: true,
       respondedAt: true,
+      checkedInAt: true,
       createdAt: true,
       table: { select: { id: true, name: true } },
     },
@@ -55,6 +56,7 @@ export default async function GuestsPage({ params }: GuestsPageProps) {
   const serialized = guests.map((g) => ({
     ...g,
     respondedAt: g.respondedAt?.toISOString() ?? null,
+    checkedInAt: g.checkedInAt?.toISOString() ?? null,
     createdAt: g.createdAt.toISOString(),
   }));
 
