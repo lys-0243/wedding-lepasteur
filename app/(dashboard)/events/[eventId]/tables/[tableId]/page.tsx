@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireEventAccess } from "@/lib/permissions";
 import { TableDetailClient } from "@/components/tables/table-detail-client";
 import type { Metadata } from "next";
 
@@ -24,21 +24,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function TableDetailPage({ params }: Props) {
-  const user = await requireUser();
   const { eventId, tableId } = await params;
-
-  // Verify event belongs to user
-  const event = await prisma.event.findFirst({
-    where: { id: eventId, userId: user.id },
-    select: { id: true },
-  });
-
-  if (!event) {
-    console.log(
-      "[TableDetailPage] Event not found or not owned by user. Calling notFound().",
-    );
-    notFound();
-  }
+  const { membership } = await requireEventAccess(eventId, "tables:read");
 
   // Fetch table and associated guests
   const table = await prisma.table.findUnique({
@@ -51,20 +38,21 @@ export default async function TableDetailPage({ params }: Props) {
   });
 
   if (!table) {
-    console.log("[TableDetailPage] Table not found in DB. Calling notFound().");
     notFound();
   }
 
   if (table.eventId !== eventId) {
-    console.log(
-      `[TableDetailPage] Table eventId mismatch: table.eventId=${table.eventId}, eventId=${eventId}. Calling notFound().`,
-    );
     notFound();
   }
 
   return (
     <div className="min-h-full bg-[#F4F6FB] p-6 lg:p-8">
-      <TableDetailClient eventId={eventId} table={table} />
+      <TableDetailClient
+        eventId={eventId}
+        table={table}
+        canEditGuests={membership.role === "OWNER"}
+        canWriteGuests={membership.role === "OWNER"}
+      />
     </div>
   );
 }

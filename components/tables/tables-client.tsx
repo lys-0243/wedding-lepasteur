@@ -37,9 +37,14 @@ type TableRow = {
 type Props = {
   eventId: string;
   initialTables: TableRow[];
+  canWriteTables?: boolean;
 };
 
-export function TablesClient({ eventId, initialTables }: Props) {
+export function TablesClient({
+  eventId,
+  initialTables,
+  canWriteTables = false,
+}: Props) {
   const [tables, setTables] = useState<TableRow[]>(initialTables);
   const [search, setSearch] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -417,17 +422,18 @@ export function TablesClient({ eventId, initialTables }: Props) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Import Excel Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setImportOpen(true)}
-            className="gap-2 border-[#E8ECF4] text-slate-600 hover:bg-slate-50 cursor-pointer h-10 px-4 rounded-xl"
-          >
-            <Upload className="h-4 w-4" />
-            <span className="hidden sm:inline">Importer Excel</span>
-            <span className="sm:hidden">Import</span>
-          </Button>
+          {canWriteTables && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setImportOpen(true)}
+              className="gap-2 border-[#E8ECF4] text-slate-600 hover:bg-slate-50 cursor-pointer h-10 px-4 rounded-xl"
+            >
+              <Upload className="h-4 w-4" />
+              <span className="hidden sm:inline">Importer Excel</span>
+              <span className="sm:hidden">Import</span>
+            </Button>
+          )}
 
           {/* Export Excel Button */}
           <Button
@@ -441,15 +447,16 @@ export function TablesClient({ eventId, initialTables }: Props) {
             <span className="sm:hidden">Export</span>
           </Button>
 
-          {/* Add table */}
-          <Button
-            size="sm"
-            onClick={() => setCreateOpen(true)}
-            className="gap-2 bg-[#1E5FF5] text-white hover:bg-[#154ED0] cursor-pointer h-10 px-4 rounded-xl"
-          >
-            <Plus className="h-4 w-4" />
-            Ajouter
-          </Button>
+          {canWriteTables && (
+            <Button
+              size="sm"
+              onClick={() => setCreateOpen(true)}
+              className="gap-2 bg-[#1E5FF5] text-white hover:bg-[#154ED0] cursor-pointer h-10 px-4 rounded-xl"
+            >
+              <Plus className="h-4 w-4" />
+              Ajouter
+            </Button>
+          )}
         </div>
       </div>
 
@@ -492,7 +499,7 @@ export function TablesClient({ eventId, initialTables }: Props) {
                 ? "Aucune table ne correspond à votre recherche."
                 : "Aucune table pour cet événement."}
             </p>
-            {!search && (
+            {!search && canWriteTables && (
               <button
                 onClick={() => setCreateOpen(true)}
                 className="mt-1 text-sm font-semibold text-[#1E5FF5] hover:underline"
@@ -581,24 +588,28 @@ export function TablesClient({ eventId, initialTables }: Props) {
                         <Download className="h-3.5 w-3.5" />
                       )}
                     </button>
-                    <button
-                      onClick={() => {
-                        setEditTable(table);
-                        setEditName(table.name);
-                        setEditCapacity(String(table.capacity));
-                      }}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-[#EEF0FF] hover:text-[#1E5FF5]"
-                      title="Modifier"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      onClick={() => setDeleteTable(table)}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-red-50 hover:text-red-500"
-                      title="Supprimer"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    {canWriteTables && (
+                      <>
+                        <button
+                          onClick={() => {
+                            setEditTable(table);
+                            setEditName(table.name);
+                            setEditCapacity(String(table.capacity));
+                          }}
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-[#EEF0FF] hover:text-[#1E5FF5]"
+                          title="Modifier"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setDeleteTable(table)}
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                          title="Supprimer"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </li>
               );
