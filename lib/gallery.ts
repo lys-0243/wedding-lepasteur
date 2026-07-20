@@ -102,14 +102,12 @@ export function signCloudinaryParams(options: {
   }
 
   const timestamp = Math.floor(Date.now() / 1000);
+  // Ne jamais inclure resource_type dans la signature (exclu par Cloudinary).
+  // Il est indiqué uniquement via l'URL /image/upload ou /video/upload.
   const params: Record<string, string> = {
     folder: options.folder,
     timestamp: String(timestamp),
   };
-
-  if (options.resourceType === "video") {
-    params.resource_type = "video";
-  }
 
   const parameterString = Object.keys(params)
     .sort()

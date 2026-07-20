@@ -43,6 +43,33 @@ type Props = {
 
 const MAX_FILES = 8;
 
+const VIDEO_EXT = /\.(mp4|mov|webm|m4v|avi|mkv|3gp|mpeg|mpg)$/i;
+const IMAGE_EXT = /\.(jpe?g|png|gif|webp|heic|heif|bmp|avif)$/i;
+
+function isVideoFile(file: File) {
+  if (file.type.startsWith("video/")) return true;
+  if (file.type.startsWith("image/")) return false;
+  return VIDEO_EXT.test(file.name);
+}
+
+function isAllowedMediaFile(file: File) {
+  if (file.type.startsWith("video/") || file.type.startsWith("image/")) {
+    return true;
+  }
+  return VIDEO_EXT.test(file.name) || IMAGE_EXT.test(file.name);
+}
+
+function cloudinaryErrorMessage(data: unknown, fallback: string) {
+  if (!data || typeof data !== "object") return fallback;
+  const err = (data as { error?: unknown }).error;
+  if (typeof err === "string" && err.trim()) return err;
+  if (err && typeof err === "object") {
+    const message = (err as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) return message;
+  }
+  return fallback;
+}
+
 const inputClassName =
   "mt-1 border-[#E8ECF4] bg-white text-sm shadow-sm h-12 px-4 rounded-3xl focus:border-[#1E5FF5] focus:ring-2 focus:ring-blue-100/50";
 
@@ -203,17 +230,49 @@ export function GalleryPublicClient({
   }
 
   async function uploadFile(file: File) {
-    const isVideo = file.type.startsWith("video/");
+    if (!isAllowedMediaFile(file)) {
+      throw new Error(
+        `« ${file.name} » n'est pas une photo ou une vidéo supportée.`,
+      );
+    }
+
+    const isVideo = isVideoFile(file);
     const resourceType = isVideo ? "video" : "image";
 
-    const signRes = await fetch(`/api/gallery/${slug}/sign`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ resourceType }),
-    });
-    const signData = await signRes.json();
-    if (!signRes.ok) {
-      throw new Error(signData.error ?? "Signature impossible.");
+    let signData: {
+      error?: string;
+      apiKey?: string;
+      timestamp?: number;
+      signature?: string;
+      folder?: string;
+      cloudName?: string;
+    };
+    try {
+      const signRes = await fetch(`/api/gallery/${slug}/sign`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resourceType }),
+      });
+      signData = await signRes.json();
+      if (!signRes.ok) {
+        throw new Error(
+          signData.error ??
+            "Impossible de préparer l'envoi. Réessayez dans un instant.",
+        );
+      }
+    } catch (err) {
+      if (err instanceof Error && err.message) throw err;
+      throw new Error("Impossible de contacter le serveur pour signer l'envoi.");
+    }
+
+    if (
+      !signData.apiKey ||
+      !signData.timestamp ||
+      !signData.signature ||
+      !signData.folder ||
+      !signData.cloudName
+    ) {
+      throw new Error("Réponse de signature incomplète.");
     }
 
     const formData = new FormData();
@@ -228,24 +287,55 @@ export function GalleryPublicClient({
         ? `https://api.cloudinary.com/v1_1/${signData.cloudName}/video/upload`
         : `https://api.cloudinary.com/v1_1/${signData.cloudName}/image/upload`;
 
-    const uploadRes = await fetch(endpoint, { method: "POST", body: formData });
-    const uploadData = await uploadRes.json();
-    if (!uploadRes.ok || !uploadData.secure_url) {
-      throw new Error("Échec de l'envoi vers Cloudinary.");
+    let uploadData: Record<string, unknown>;
+    try {
+      const uploadRes = await fetch(endpoint, {
+        method: "POST",
+        body: formData,
+      });
+      uploadData = (await uploadRes.json()) as Record<string, unknown>;
+      if (!uploadRes.ok || !uploadData.secure_url) {
+        throw new Error(
+          cloudinaryErrorMessage(
+            uploadData,
+            isVideo
+              ? `Échec de l'envoi de la vidéo « ${file.name} ». Vérifiez le format (MP4, MOV…) et la taille.`
+              : `Échec de l'envoi de la photo « ${file.name} ».`,
+          ),
+        );
+      }
+    } catch (err) {
+      if (err instanceof Error && err.message) throw err;
+      throw new Error(
+        isVideo
+          ? `Impossible d'envoyer la vidéo « ${file.name} » (réseau ou fichier trop lourd).`
+          : `Impossible d'envoyer la photo « ${file.name} ».`,
+      );
     }
 
-    const registerRes = await fetch(`/api/gallery/${slug}/media`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        url: uploadData.secure_url,
-        publicId: uploadData.public_id,
-        resourceType: isVideo ? "VIDEO" : "IMAGE",
-      }),
-    });
-    const registerData = await registerRes.json();
-    if (!registerRes.ok) {
-      throw new Error(registerData.error ?? "Enregistrement impossible.");
+    let registerData: { error?: string };
+    try {
+      const registerRes = await fetch(`/api/gallery/${slug}/media`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: uploadData.secure_url,
+          publicId: uploadData.public_id,
+          resourceType: isVideo ? "VIDEO" : "IMAGE",
+        }),
+      });
+      registerData = await registerRes.json();
+      if (!registerRes.ok) {
+        throw new Error(
+          registerData.error ??
+            `Le fichier « ${file.name} » a été envoyé mais n'a pas pu être enregistré.`,
+        );
+      }
+    } catch (err) {
+      if (err instanceof Error && err.message) throw err;
+      throw new Error(
+        `Le fichier « ${file.name} » a été envoyé mais l'enregistrement a échoué.`,
+      );
     }
 
     return registerData;
@@ -264,15 +354,35 @@ export function GalleryPublicClient({
     const files = Array.from(e.target.files ?? []);
     if (files.length === 0) return;
 
-    const remaining = quota.max - quota.used;
+    // Reset input early so the same files can be reselected after an error
+    if (fileInputRef.current) fileInputRef.current.value = "";
+
+    const remaining = Math.max(0, Math.min(MAX_FILES, quota.max) - quota.used);
     if (remaining <= 0) {
-      toast.error(`Limite de ${MAX_FILES} fichiers atteinte.`);
+      toast.error(
+        `Limite atteinte : maximum ${MAX_FILES} fichiers (photos ou vidéos) par personne.`,
+      );
       return;
     }
 
-    const batch = files.slice(0, remaining);
+    const allowed = files.filter(isAllowedMediaFile);
+    const rejected = files.length - allowed.length;
+    if (rejected > 0) {
+      toast.error(
+        `${rejected} fichier${rejected > 1 ? "s" : ""} ignoré${rejected > 1 ? "s" : ""} : seuls photos et vidéos sont acceptés.`,
+      );
+    }
+    if (allowed.length === 0) return;
+
+    if (allowed.length > remaining) {
+      toast.message(
+        `Seuls ${remaining} fichier${remaining > 1 ? "s" : ""} seront envoyés (max ${MAX_FILES} au total).`,
+      );
+    }
+
+    const batch = allowed.slice(0, remaining);
     const queueItems: UploadQueueItem[] = batch.map((file, index) => {
-      const isVideo = file.type.startsWith("video/");
+      const isVideo = isVideoFile(file);
       return {
         id: `${Date.now()}-${index}-${file.name}`,
         name: file.name,
@@ -285,6 +395,7 @@ export function GalleryPublicClient({
     setUploadQueue(queueItems);
     setUploading(true);
     let successCount = 0;
+    let errorCount = 0;
 
     try {
       for (let i = 0; i < batch.length; i++) {
@@ -295,28 +406,50 @@ export function GalleryPublicClient({
           successCount += 1;
           updateQueueItem(queueItem.id, { status: "done" });
         } catch (err) {
+          errorCount += 1;
           updateQueueItem(queueItem.id, { status: "error" });
           toast.error(
-            err instanceof Error ? err.message : "Erreur lors de l'envoi.",
+            err instanceof Error
+              ? err.message
+              : `Erreur lors de l'envoi de « ${file.name} ».`,
           );
-          break;
+          // Continuer avec les fichiers suivants — pas de plantage global
         }
       }
+
       if (successCount > 0) {
         toast.success(
           `${successCount} fichier${successCount > 1 ? "s" : ""} ajouté${successCount > 1 ? "s" : ""}.`,
         );
-        await Promise.all([refreshMedia(), refreshQuota()]);
+        try {
+          await Promise.all([refreshMedia(), refreshQuota()]);
+        } catch {
+          toast.error(
+            "Fichiers envoyés, mais le rafraîchissement de la galerie a échoué. Rechargez la page.",
+          );
+        }
+      } else if (errorCount > 0) {
+        toast.error(
+          "Aucun fichier n'a pu être ajouté. Vérifiez le format et réessayez.",
+        );
       }
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Une erreur inattendue est survenue pendant l'envoi.",
+      );
     } finally {
       setUploading(false);
-      setUploadQueue((prev) => {
-        for (const item of prev) {
-          if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
-        }
-        return [];
-      });
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      // Laisser voir brièvement le statut avant de retirer la file
+      window.setTimeout(() => {
+        setUploadQueue((prev) => {
+          for (const item of prev) {
+            if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+          }
+          return [];
+        });
+      }, 800);
     }
   }
 
