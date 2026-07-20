@@ -110,26 +110,37 @@ export function Sidebar({
       )}
     >
       <div className="flex flex-col items-center gap-2 border-b border-[#ffffff] px-6 py-6">
-        {user.avatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={user.avatarUrl}
-            alt={user.name ?? "Avatar"}
-            className="h-16 w-16 rounded-full object-cover ring-2 ring-[#534AB7]/20 ring-offset-2"
-          />
-        ) : (
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-linear-to-br from-[#534AB7] to-[#AF8BFF] text-lg font-bold text-white ring-2 ring-[#534AB7]/20 ring-offset-2">
-            {initials}
-          </div>
-        )}
-        <div className="text-center mb-6">
-          {user.name && (
-            <p className="text-sm font-semibold text-slate-800">{user.name}</p>
+        <Link
+          href="/profile"
+          className="group flex flex-col items-center gap-2 rounded-2xl px-2 py-1 transition-opacity hover:opacity-90"
+          title="Modifier mon profil"
+        >
+          {user.avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={user.avatarUrl}
+              alt={user.name ?? "Avatar"}
+              className="h-16 w-16 rounded-full object-cover ring-2 ring-[#534AB7]/20 ring-offset-2 transition group-hover:ring-[#534AB7]/40"
+            />
+          ) : (
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-linear-to-br from-[#534AB7] to-[#AF8BFF] text-lg font-bold text-white ring-2 ring-[#534AB7]/20 ring-offset-2 transition group-hover:ring-[#534AB7]/40">
+              {initials}
+            </div>
           )}
-          <p className="max-w-[12rem] truncate text-xs text-slate-500">
-            {user.email}
-          </p>
-        </div>
+          <div className="text-center mb-2">
+            {user.name && (
+              <p className="text-sm font-semibold text-slate-800 group-hover:text-[#534AB7] transition-colors">
+                {user.name}
+              </p>
+            )}
+            <p className="max-w-[12rem] truncate text-xs text-slate-500">
+              {user.email}
+            </p>
+            <p className="mt-1 text-[0.65rem] font-medium text-[#1E5FF5] opacity-0 transition-opacity group-hover:opacity-100">
+              Modifier le profil
+            </p>
+          </div>
+        </Link>
         {eventTitle && (
           <>
             <div className=" px-3">
@@ -237,28 +248,38 @@ export function MobileNavSheet({
         showCloseButton={false}
       >
         <div className="flex flex-col items-center gap-2 border-b border-[#E8ECF4] px-6 py-7 pt-12">
-          {user.avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={user.avatarUrl}
-              alt={user.name ?? "Avatar"}
-              className="h-16 w-16 rounded-full object-cover ring-2 ring-[#534AB7]/20 ring-offset-2"
-            />
-          ) : (
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-linear-to-br from-[#534AB7] to-[#AF8BFF] text-lg font-bold text-white ring-2 ring-[#534AB7]/20 ring-offset-2">
-              {initials}
-            </div>
-          )}
-          <div className="text-center mb-6">
-            {user.name && (
-              <p className="text-sm font-semibold text-slate-800">
-                {user.name}
-              </p>
+          <Link
+            href="/profile"
+            onClick={() => setOpen(false)}
+            className="group flex flex-col items-center gap-2 rounded-2xl px-2 py-1 transition-opacity hover:opacity-90"
+            title="Modifier mon profil"
+          >
+            {user.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={user.avatarUrl}
+                alt={user.name ?? "Avatar"}
+                className="h-16 w-16 rounded-full object-cover ring-2 ring-[#534AB7]/20 ring-offset-2 transition group-hover:ring-[#534AB7]/40"
+              />
+            ) : (
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-linear-to-br from-[#534AB7] to-[#AF8BFF] text-lg font-bold text-white ring-2 ring-[#534AB7]/20 ring-offset-2 transition group-hover:ring-[#534AB7]/40">
+                {initials}
+              </div>
             )}
-            <p className="max-w-[12rem] truncate text-xs text-slate-500">
-              {user.email}
-            </p>
-          </div>
+            <div className="text-center mb-2">
+              {user.name && (
+                <p className="text-sm font-semibold text-slate-800 group-hover:text-[#534AB7] transition-colors">
+                  {user.name}
+                </p>
+              )}
+              <p className="max-w-[12rem] truncate text-xs text-slate-500">
+                {user.email}
+              </p>
+              <p className="mt-1 text-[0.65rem] font-medium text-[#1E5FF5]">
+                Modifier le profil
+              </p>
+            </div>
+          </Link>
           {eventTitle && (
             <>
               <div className="px-3">
