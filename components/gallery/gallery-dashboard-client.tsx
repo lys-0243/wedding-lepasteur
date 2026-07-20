@@ -361,34 +361,49 @@ export function GalleryDashboardClient({
                         <button
                           type="button"
                           onClick={() => setViewerItem(item)}
-                          className="block h-full w-full cursor-pointer"
-                          title="Agrandir"
-                        >
-                          {item.resourceType === "VIDEO" ? (
-                            <video
-                              src={item.url}
-                              className="h-full w-full object-cover"
-                              preload="metadata"
-                              muted
-                              playsInline
-                            />
-                          ) : (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={item.url}
-                              alt=""
-                              className="h-full w-full object-cover"
-                            />
-                          )}
-                        </button>
+                          className="absolute inset-0 z-[1] cursor-pointer"
+                          title={
+                            item.resourceType === "VIDEO"
+                              ? "Lire la vidéo"
+                              : "Voir la photo"
+                          }
+                          aria-label={
+                            item.resourceType === "VIDEO"
+                              ? "Lire la vidéo"
+                              : "Voir la photo"
+                          }
+                        />
+                        {item.resourceType === "VIDEO" ? (
+                          <video
+                            src={item.url}
+                            className="pointer-events-none h-full w-full object-cover"
+                            preload="metadata"
+                            muted
+                            playsInline
+                          />
+                        ) : (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={item.url}
+                            alt=""
+                            className="pointer-events-none h-full w-full object-cover"
+                          />
+                        )}
                         {item.resourceType === "VIDEO" && (
-                          <Video className="pointer-events-none absolute left-2 top-2 h-3.5 w-3.5 text-white drop-shadow" />
+                          <span className="pointer-events-none absolute inset-0 z-[1] flex items-center justify-center bg-black/20">
+                            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-black/55 text-white shadow-sm">
+                              <Video className="h-4 w-4" />
+                            </span>
+                          </span>
                         )}
                         <button
                           type="button"
-                          onClick={() => void handleDelete(item.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void handleDelete(item.id);
+                          }}
                           disabled={deletingId === item.id}
-                          className="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-lg bg-black/50 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-600 cursor-pointer"
+                          className="absolute right-1.5 top-1.5 z-[2] flex h-7 w-7 items-center justify-center rounded-lg bg-black/50 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-600 cursor-pointer"
                           title="Supprimer"
                         >
                           {deletingId === item.id ? (
@@ -407,10 +422,10 @@ export function GalleryDashboardClient({
         </div>
       </div>
 
-      {/* Lightbox */}
+      {/* Lightbox — voir photo / lire vidéo */}
       {viewerItem && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-md p-4"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 backdrop-blur-md p-4"
           onClick={() => setViewerItem(null)}
           role="dialog"
           aria-modal="true"
@@ -427,7 +442,7 @@ export function GalleryDashboardClient({
           </button>
 
           <div
-            className="relative flex max-h-[90vh] max-w-[90vw] items-center justify-center"
+            className="relative flex max-h-[90vh] max-w-[90vw] flex-col items-center gap-3"
             onClick={(e) => e.stopPropagation()}
           >
             {viewerItem.resourceType === "VIDEO" ? (
@@ -437,16 +452,20 @@ export function GalleryDashboardClient({
                 controls
                 autoPlay
                 playsInline
-                className="max-h-[90vh] max-w-[90vw] rounded-xl shadow-2xl"
+                className="max-h-[85vh] max-w-[90vw] rounded-xl bg-black shadow-2xl"
               />
             ) : (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={viewerItem.url}
                 alt=""
-                className="max-h-[90vh] max-w-[90vw] rounded-xl object-contain shadow-2xl"
+                className="max-h-[85vh] max-w-[90vw] rounded-xl object-contain shadow-2xl"
               />
             )}
+            <p className="rounded-full bg-black/50 px-3 py-1 text-xs font-medium text-white">
+              {viewerItem.uploaderName}
+              {viewerItem.resourceType === "VIDEO" ? " · Vidéo" : " · Photo"}
+            </p>
           </div>
         </div>
       )}

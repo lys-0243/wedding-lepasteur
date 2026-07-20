@@ -96,6 +96,7 @@ export function GalleryPublicClient({
   const [searchQuery, setSearchQuery] = useState("");
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [viewerItem, setViewerItem] = useState<MediaItem | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const searchWrapRef = useRef<HTMLDivElement>(null);
 
@@ -186,6 +187,23 @@ export function GalleryPublicClient({
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, []);
 
+  useEffect(() => {
+    if (!viewerItem) return;
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setViewerItem(null);
+    }
+
+    document.addEventListener("keydown", onKeyDown);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [viewerItem]);
+
   async function handleUnlock(e: React.FormEvent) {
     e.preventDefault();
     setUnlocking(true);
@@ -262,7 +280,9 @@ export function GalleryPublicClient({
       }
     } catch (err) {
       if (err instanceof Error && err.message) throw err;
-      throw new Error("Impossible de contacter le serveur pour signer l'envoi.");
+      throw new Error(
+        "Impossible de contacter le serveur pour signer l'envoi.",
+      );
     }
 
     if (
@@ -457,8 +477,7 @@ export function GalleryPublicClient({
     return (
       <main className="min-h-screen bg-[#F4F6FB] flex items-center justify-center">
         <div className="inline-flex items-center gap-2 text-slate-600">
-          <Loader2 className="h-4 w-4 animate-spin" /> Chargement de la
-          galerie…
+          <Loader2 className="h-4 w-4 animate-spin" /> Chargement de la galerie…
         </div>
       </main>
     );
@@ -469,6 +488,7 @@ export function GalleryPublicClient({
   ).length;
 
   return (
+    <>
     <main className="min-h-screen bg-[#F4F6FB] py-8 px-4">
       <section className="mx-auto w-full max-w-2xl overflow-hidden rounded-4xl bg-white shadow-sm">
         <div className="relative">
@@ -746,7 +766,7 @@ export function GalleryPublicClient({
                       Envoi en cours
                     </h3>
                     {viewMode === "grid" ? (
-                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                         {uploadQueue.map((item) => (
                           <div
                             key={item.id}
@@ -857,29 +877,45 @@ export function GalleryPublicClient({
                         </div>
 
                         {viewMode === "grid" ? (
-                          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                             {items.map((item, index) => (
                               <div
                                 key={item.id}
                                 className="group relative aspect-square overflow-hidden rounded-xl bg-slate-100"
                               >
+                                <button
+                                  type="button"
+                                  onClick={() => setViewerItem(item)}
+                                  className="absolute inset-0 z-[1] cursor-pointer"
+                                  title={
+                                    item.resourceType === "VIDEO"
+                                      ? "Lire la vidéo"
+                                      : "Voir la photo"
+                                  }
+                                  aria-label={
+                                    item.resourceType === "VIDEO"
+                                      ? `Lire la vidéo ${index + 1}`
+                                      : `Voir la photo ${index + 1}`
+                                  }
+                                />
                                 {item.resourceType === "VIDEO" ? (
                                   <video
                                     src={item.url}
-                                    className="h-full w-full object-cover"
-                                    controls
+                                    className="pointer-events-none h-full w-full object-cover"
                                     preload="metadata"
+                                    muted
+                                    playsInline
                                   />
                                 ) : (
                                   // eslint-disable-next-line @next/next/no-img-element
                                   <img
                                     src={item.url}
                                     alt={`${guestName} — Photo ${index + 1}`}
-                                    className="h-full w-full object-cover"
+                                    className="pointer-events-none h-full w-full object-cover"
                                     loading="lazy"
                                   />
                                 )}
-                                <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/70 to-transparent p-2">
+                                <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] bg-linear-to-t from-black/70 to-transparent p-2">
                                   <p className="truncate text-xs font-medium text-white">
                                     {item.resourceType === "VIDEO"
                                       ? `Vidéo ${index + 1}`
@@ -887,7 +923,11 @@ export function GalleryPublicClient({
                                   </p>
                                 </div>
                                 {item.resourceType === "VIDEO" && (
-                                  <Video className="absolute right-2 top-2 h-4 w-4 text-white drop-shadow" />
+                                  <span className="pointer-events-none absolute inset-0 z-[1] flex items-center justify-center bg-black/20">
+                                    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-black/55 text-white shadow-sm">
+                                      <Video className="h-5 w-5" />
+                                    </span>
+                                  </span>
                                 )}
                               </div>
                             ))}
@@ -895,61 +935,52 @@ export function GalleryPublicClient({
                         ) : (
                           <ul className="divide-y divide-[#E8ECF4] overflow-hidden rounded-3xl border border-[#E8ECF4] bg-slate-50">
                             {items.map((item, index) => (
-                              <li
-                                key={item.id}
-                                className="flex items-center gap-3 px-4 py-3"
-                              >
-                                <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-slate-200">
-                                  {item.resourceType === "VIDEO" ? (
-                                    <video
-                                      src={item.url}
-                                      className="h-full w-full object-cover"
-                                      preload="metadata"
-                                      muted
-                                      playsInline
-                                    />
-                                  ) : (
-                                    // eslint-disable-next-line @next/next/no-img-element
-                                    <img
-                                      src={item.url}
-                                      alt=""
-                                      className="h-full w-full object-cover"
-                                      loading="lazy"
-                                    />
-                                  )}
-                                  {item.resourceType === "VIDEO" && (
-                                    <Video className="absolute right-1 top-1 h-3.5 w-3.5 text-white drop-shadow" />
-                                  )}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <p className="truncate text-sm font-semibold text-slate-800">
+                              <li key={item.id}>
+                                <button
+                                  type="button"
+                                  onClick={() => setViewerItem(item)}
+                                  className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white cursor-pointer"
+                                >
+                                  <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-slate-200">
+                                    {item.resourceType === "VIDEO" ? (
+                                      <video
+                                        src={item.url}
+                                        className="pointer-events-none h-full w-full object-cover"
+                                        preload="metadata"
+                                        muted
+                                        playsInline
+                                      />
+                                    ) : (
+                                      // eslint-disable-next-line @next/next/no-img-element
+                                      <img
+                                        src={item.url}
+                                        alt=""
+                                        className="pointer-events-none h-full w-full object-cover"
+                                        loading="lazy"
+                                      />
+                                    )}
+                                    {item.resourceType === "VIDEO" && (
+                                      <Video className="absolute right-1 top-1 h-3.5 w-3.5 text-white drop-shadow" />
+                                    )}
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="truncate text-sm font-semibold text-slate-800">
+                                      {item.resourceType === "VIDEO"
+                                        ? `Vidéo ${index + 1}`
+                                        : `Photo ${index + 1}`}
+                                    </p>
+                                    <p className="text-xs text-slate-500">
+                                      {item.resourceType === "VIDEO"
+                                        ? "Vidéo"
+                                        : "Photo"}
+                                    </p>
+                                  </div>
+                                  <span className="shrink-0 text-xs font-semibold text-[#1E5FF5]">
                                     {item.resourceType === "VIDEO"
-                                      ? `Vidéo ${index + 1}`
-                                      : `Photo ${index + 1}`}
-                                  </p>
-                                  <p className="text-xs text-slate-500">
-                                    {item.resourceType === "VIDEO"
-                                      ? "Vidéo"
-                                      : "Photo"}
-                                  </p>
-                                </div>
-                                {item.resourceType === "VIDEO" ? (
-                                  <video
-                                    src={item.url}
-                                    controls
-                                    preload="metadata"
-                                    className="h-10 max-w-28 rounded-lg"
-                                  />
-                                ) : (
-                                  <a
-                                    href={item.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="shrink-0 text-xs font-semibold text-[#1E5FF5] hover:underline"
-                                  >
-                                    Voir
-                                  </a>
-                                )}
+                                      ? "Lire"
+                                      : "Voir"}
+                                  </span>
+                                </button>
                               </li>
                             ))}
                           </ul>
@@ -964,5 +995,53 @@ export function GalleryPublicClient({
         </div>
       </section>
     </main>
+
+      {viewerItem && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 backdrop-blur-md p-4"
+          onClick={() => setViewerItem(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Aperçu du média"
+        >
+          <button
+            type="button"
+            onClick={() => setViewerItem(null)}
+            className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-xl bg-white/90 text-slate-700 shadow-sm transition-colors hover:bg-white cursor-pointer"
+            title="Fermer"
+            aria-label="Fermer"
+          >
+            <X className="h-5 w-5" />
+          </button>
+
+          <div
+            className="relative flex max-h-[90vh] max-w-[90vw] flex-col items-center gap-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {viewerItem.resourceType === "VIDEO" ? (
+              <video
+                key={viewerItem.id}
+                src={viewerItem.url}
+                controls
+                autoPlay
+                playsInline
+                className="max-h-[85vh] max-w-[90vw] rounded-xl bg-black shadow-2xl"
+              />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={viewerItem.url}
+                alt=""
+                className="max-h-[85vh] max-w-[90vw] rounded-xl object-contain shadow-2xl"
+              />
+            )}
+            <p className="rounded-full bg-black/50 px-3 py-1 text-xs font-medium text-white">
+              {viewerItem.uploaderName}
+              {viewerItem.resourceType === "VIDEO" ? " · Vidéo" : " · Photo"}
+            </p>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
