@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireEventAccess } from "@/lib/permissions";
 import { GuestsClient } from "@/components/guests/guests-client";
 import type { Metadata } from "next";
 
@@ -21,11 +21,12 @@ export async function generateMetadata({ params }: GuestsPageProps): Promise<Met
 }
 
 export default async function GuestsPage({ params }: GuestsPageProps) {
-  const user = await requireUser();
   const { eventId } = await params;
+  const { membership } = await requireEventAccess(eventId, "guests:read");
+  const canWriteGuests = membership.role === "OWNER";
 
-  const event = await prisma.event.findFirst({
-    where: { id: eventId, userId: user.id },
+  const event = await prisma.event.findUnique({
+    where: { id: eventId },
     select: { id: true, title: true, eventDate: true },
   });
   if (!event) notFound();
@@ -65,6 +66,8 @@ export default async function GuestsPage({ params }: GuestsPageProps) {
       <GuestsClient
         eventId={eventId}
         initialGuests={serialized}
+        canEditGuests={canWriteGuests}
+        canWriteGuests={canWriteGuests}
         event={{
           title: event.title,
           eventDate: event.eventDate?.toISOString() ?? null,

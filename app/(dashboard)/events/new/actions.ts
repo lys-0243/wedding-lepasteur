@@ -97,6 +97,12 @@ export async function createEventAction(formData: FormData) {
               },
             }
           : undefined,
+      members: {
+        create: {
+          userId: user.id,
+          role: "OWNER",
+        },
+      },
     },
     select: {
       id: true,

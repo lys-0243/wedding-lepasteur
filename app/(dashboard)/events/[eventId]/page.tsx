@@ -10,7 +10,7 @@ import {
   Clock,
   UserX,
 } from "lucide-react";
-import { requireUser } from "@/lib/auth";
+import { requireEventAccess } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import EditLink from "./edit/link";
 
@@ -34,11 +34,12 @@ function guestHeads(invitationType: string) {
 }
 
 export default async function EventDashboardPage({ params }: EventPageProps) {
-  const user = await requireUser();
   const { eventId } = await params;
+  const { membership } = await requireEventAccess(eventId, "event:read");
+  const canEditEvent = membership.role === "OWNER";
 
-  const event = await prisma.event.findFirst({
-    where: { id: eventId, userId: user.id },
+  const event = await prisma.event.findUnique({
+    where: { id: eventId },
     select: {
       id: true,
       title: true,
@@ -322,9 +323,11 @@ export default async function EventDashboardPage({ params }: EventPageProps) {
             </p>
           </div>
         )}
-        <div className="mt-4">
-          <EditLink eventId={event.id} />
-        </div>
+        {canEditEvent && (
+          <div className="mt-4">
+            <EditLink eventId={event.id} />
+          </div>
+        )}
       </div>
     </div>
   );

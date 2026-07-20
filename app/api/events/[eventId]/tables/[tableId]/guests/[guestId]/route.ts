@@ -1,55 +1,66 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireEventAccessApi } from "@/lib/permissions";
 
-type RouteContext = { params: Promise<{ eventId: string; tableId: string; guestId: string }> };
+type RouteContext = {
+  params: Promise<{ eventId: string; tableId: string; guestId: string }>;
+};
 
-// DELETE /api/events/[eventId]/tables/[tableId]/guests/[guestId] - Delete guest entirely
+function requireOwner(
+  access: Awaited<ReturnType<typeof requireEventAccessApi>>,
+) {
+  if ("denied" in access) return access.denied;
+  if (access.membership.role !== "OWNER") {
+    return NextResponse.json({ error: "Non autorisé." }, { status: 403 });
+  }
+  return null;
+}
+
+// DELETE — delete guest entirely (OWNER only)
 export async function DELETE(_req: NextRequest, { params }: RouteContext) {
-  const user = await requireUser();
   const { eventId, tableId, guestId } = await params;
+  const access = await requireEventAccessApi(eventId, "guests:read");
+  const denied = requireOwner(access);
+  if (denied) return denied;
 
-  // Verify access
-  const event = await prisma.event.findFirst({
-    where: { id: eventId, userId: user.id },
-    select: { id: true },
-  });
-  if (!event) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-  // Verify guest matches table and event
   const guest = await prisma.guest.findFirst({
     where: { id: guestId, tableId, eventId },
   });
-  if (!guest) return NextResponse.json({ error: "Invité introuvable" }, { status: 404 });
+  if (!guest) {
+    return NextResponse.json({ error: "Invité introuvable" }, { status: 404 });
+  }
 
   await prisma.guest.delete({ where: { id: guestId } });
 
   return NextResponse.json({ success: true });
 }
 
-// PATCH /api/events/[eventId]/tables/[tableId]/guests/[guestId] - Update guest or unassign
+// PATCH — update guest details (OWNER) or unassign (tables:write)
 export async function PATCH(req: NextRequest, { params }: RouteContext) {
-  const user = await requireUser();
   const { eventId, tableId, guestId } = await params;
-
-  // Verify access
-  const event = await prisma.event.findFirst({
-    where: { id: eventId, userId: user.id },
-    select: { id: true },
-  });
-  if (!event) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-  // Verify guest matches table and event
-  const guest = await prisma.guest.findFirst({
-    where: { id: guestId, tableId, eventId },
-  });
-  if (!guest) return NextResponse.json({ error: "Invité introuvable" }, { status: 404 });
-
   const body = await req.json();
-  const { action, firstName, lastName, email, phone, invitationType, plusOneFirstName, plusOneLastName } = body;
+  const {
+    action,
+    firstName,
+    lastName,
+    email,
+    phone,
+    invitationType,
+    plusOneFirstName,
+    plusOneLastName,
+  } = body;
 
   if (action === "unassign") {
-    // Unassign from table
+    const access = await requireEventAccessApi(eventId, "guests:write");
+    if ("denied" in access) return access.denied;
+
+    const guest = await prisma.guest.findFirst({
+      where: { id: guestId, tableId, eventId },
+    });
+    if (!guest) {
+      return NextResponse.json({ error: "Invité introuvable" }, { status: 404 });
+    }
+
     const updated = await prisma.guest.update({
       where: { id: guestId },
       data: { tableId: null },
@@ -57,17 +68,39 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     return NextResponse.json(updated);
   }
 
-  // Update guest details
+  const access = await requireEventAccessApi(eventId, "guests:read");
+  const denied = requireOwner(access);
+  if (denied) return denied;
+
+  const guest = await prisma.guest.findFirst({
+    where: { id: guestId, tableId, eventId },
+  });
+  if (!guest) {
+    return NextResponse.json({ error: "Invité introuvable" }, { status: 404 });
+  }
+
   const updated = await prisma.guest.update({
     where: { id: guestId },
     data: {
       ...(firstName !== undefined && { firstName: String(firstName).trim() }),
       ...(lastName !== undefined && { lastName: String(lastName).trim() }),
-      ...(email !== undefined && { email: email ? String(email).trim() : null }),
-      ...(phone !== undefined && { phone: phone ? String(phone).trim() : null }),
+      ...(email !== undefined && {
+        email: email ? String(email).trim() : null,
+      }),
+      ...(phone !== undefined && {
+        phone: phone ? String(phone).trim() : null,
+      }),
       ...(invitationType !== undefined && { invitationType }),
-      ...(plusOneFirstName !== undefined && { plusOneFirstName: plusOneFirstName ? String(plusOneFirstName).trim() : null }),
-      ...(plusOneLastName !== undefined && { plusOneLastName: plusOneLastName ? String(plusOneLastName).trim() : null }),
+      ...(plusOneFirstName !== undefined && {
+        plusOneFirstName: plusOneFirstName
+          ? String(plusOneFirstName).trim()
+          : null,
+      }),
+      ...(plusOneLastName !== undefined && {
+        plusOneLastName: plusOneLastName
+          ? String(plusOneLastName).trim()
+          : null,
+      }),
     },
   });
 

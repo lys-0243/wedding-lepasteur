@@ -1,4 +1,5 @@
 import { ScannerClient } from "@/components/scanner/scanner-client";
+import { requireEventAccess } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import type { Metadata } from "next";
 
@@ -18,6 +19,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ScannerPage({ params }: Props) {
   const { eventId } = await params;
+  await requireEventAccess(eventId, "checkin:read");
 
   return (
     <div className="py-6 lg:py-8">

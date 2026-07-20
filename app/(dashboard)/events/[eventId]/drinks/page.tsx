@@ -1,6 +1,5 @@
-import { notFound } from "next/navigation";
-import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireEventAccess } from "@/lib/permissions";
 import { DrinksClient } from "@/components/drinks/drinks-client";
 import type { Metadata } from "next";
 
@@ -19,15 +18,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function DrinksPage({ params }: Props) {
-  const user = await requireUser();
   const { eventId } = await params;
-
-  const event = await prisma.event.findFirst({
-    where: { id: eventId, userId: user.id },
-    select: { id: true },
-  });
-
-  if (!event) notFound();
+  await requireEventAccess(eventId, "drinks:read");
 
   const catalog = await prisma.drink.findMany({
     orderBy: [{ isAlcoholic: "desc" }, { name: "asc" }],

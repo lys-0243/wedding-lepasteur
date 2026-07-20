@@ -8,14 +8,15 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
+  id           String        @id @default(cuid())
+  email        String        @unique
   passwordHash String
   name         String?
   avatarUrl    String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
   events       Event[]
+  eventMembers EventMember[]
 }
 
 model Event {
@@ -30,13 +31,17 @@ model Event {
   profileImageUrl   String?
   coverImageUrl     String?
   invitationFileUrl String?
-  status            EventStatus  @default(DRAFT)
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  status            EventStatus      @default(DRAFT)
+  galleryEnabled    Boolean          @default(false)
+  galleryPin        String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
   eventDrinks       EventDrink[]
-  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   guests            Guest[]
   tables            Table[]
+  mediaLinks        EventMediaLink[]
+  members           EventMember[]
 }
 
 model Table {
@@ -137,4 +142,44 @@ enum RsvpStatus {
 enum DrinkAssignee {
   PRIMARY
   PLUS_ONE
+}
+
+model EventMediaLink {
+  id                     String            @id @default(cuid())
+  eventId                String
+  uploaderName           String
+  uploaderNameNormalized String
+  url                    String
+  publicId               String?
+  resourceType           MediaResourceType
+  createdAt              DateTime          @default(now())
+  event                  Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, uploaderNameNormalized])
+  @@index([eventId, createdAt])
+}
+
+enum MediaResourceType {
+  IMAGE
+  VIDEO
+}
+
+enum EventRole {
+  OWNER
+  PROTOCOLE
+  SCANNER
+}
+
+model EventMember {
+  id        String    @id @default(cuid())
+  eventId   String
+  userId    String
+  role      EventRole
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  event     Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@index([userId])
 }

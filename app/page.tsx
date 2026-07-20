@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { logoutAction } from "@/app/(auth)/actions";
 import { requireUser } from "@/lib/auth";
+import { EVENT_ROLE_LABELS } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -29,29 +30,38 @@ function formatEventDate(date: Date | null) {
 export default async function Home() {
   const user = await requireUser();
 
-  const events = await prisma.event.findMany({
+  const memberships = await prisma.eventMember.findMany({
     where: { userId: user.id },
     select: {
-      id: true,
-      title: true,
-      description: true,
-      eventDate: true,
-      createdAt: true,
+      role: true,
+      event: {
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          eventDate: true,
+          createdAt: true,
+        },
+      },
     },
     orderBy: {
-      createdAt: "desc",
+      event: { createdAt: "desc" },
     },
   });
 
-  const sortedEvents = [...events].sort((a, b) => {
-    const left = a.eventDate ? a.eventDate.getTime() : -Infinity;
-    const right = b.eventDate ? b.eventDate.getTime() : -Infinity;
+  const canCreateEvent =
+    memberships.length === 0 ||
+    memberships.some((membership) => membership.role === "OWNER");
+
+  const sortedEvents = [...memberships].sort((a, b) => {
+    const left = a.event.eventDate ? a.event.eventDate.getTime() : -Infinity;
+    const right = b.event.eventDate ? b.event.eventDate.getTime() : -Infinity;
 
     if (right !== left) {
       return right - left;
     }
 
-    return b.createdAt.getTime() - a.createdAt.getTime();
+    return b.event.createdAt.getTime() - a.event.createdAt.getTime();
   });
 
   return (
@@ -75,12 +85,14 @@ export default async function Home() {
             <h1 className="text-[1.45rem] font-semibold tracking-[-0.02em] text-slate-800 sm:text-[1.6rem]">
               Vos evenements
             </h1>
-            <Link
-              href="/events/new"
-              className="inline-flex h-9 items-center justify-center rounded-lg border border-[#A27AFA] bg-[#AF8BFF] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#9E76FF] sm:h-10 sm:px-3.5 sm:text-sm"
-            >
-              Creer un evenement
-            </Link>
+            {canCreateEvent && (
+              <Link
+                href="/events/new"
+                className="inline-flex h-9 items-center justify-center rounded-lg border border-[#A27AFA] bg-[#AF8BFF] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#9E76FF] sm:h-10 sm:px-3.5 sm:text-sm"
+              >
+                Creer un evenement
+              </Link>
+            )}
           </div>
 
           <div className="mb-4 grid grid-cols-2 gap-1.5 rounded-xl bg-[#E6EBF3] p-1">
@@ -105,7 +117,7 @@ export default async function Home() {
               </div>
             )}
 
-            {sortedEvents.map((event, index) => {
+            {sortedEvents.map(({ event, role }, index) => {
               const Icon = eventIcons[index % eventIcons.length];
 
               return (
@@ -123,6 +135,9 @@ export default async function Home() {
                         <p className="mb-0.5 flex items-center gap-1.5 text-base font-semibold leading-tight tracking-[-0.02em] text-slate-800 sm:text-[1.05rem]">
                           <CircleAlert className="h-3 w-3 fill-[#AF8BFF] text-[#AF8BFF]" />
                           {event.title}
+                        </p>
+                        <p className="mb-1 text-xs font-medium text-[#534AB7]">
+                          {EVENT_ROLE_LABELS[role]}
                         </p>
                         <p className="max-w-md text-sm leading-snug text-slate-500 sm:text-[0.95rem]">
                           {event.description}

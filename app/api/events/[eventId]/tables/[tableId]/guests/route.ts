@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireEventAccessApi } from "@/lib/permissions";
 
 const createGuestSchema = z.object({
   firstName: z.string().min(1, "Le prénom est requis"),
@@ -16,15 +16,9 @@ const createGuestSchema = z.object({
 type RouteContext = { params: Promise<{ eventId: string; tableId: string }> };
 
 export async function GET(_req: NextRequest, { params }: RouteContext) {
-  const user = await requireUser();
   const { eventId, tableId } = await params;
-
-  // Verify access
-  const event = await prisma.event.findFirst({
-    where: { id: eventId, userId: user.id },
-    select: { id: true },
-  });
-  if (!event) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const access = await requireEventAccessApi(eventId, "tables:read");
+  if ("denied" in access) return access.denied;
 
   const table = await prisma.table.findFirst({
     where: { id: tableId, eventId },
@@ -40,15 +34,9 @@ export async function GET(_req: NextRequest, { params }: RouteContext) {
 }
 
 export async function POST(req: NextRequest, { params }: RouteContext) {
-  const user = await requireUser();
   const { eventId, tableId } = await params;
-
-  // Verify access
-  const event = await prisma.event.findFirst({
-    where: { id: eventId, userId: user.id },
-    select: { id: true },
-  });
-  if (!event) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const access = await requireEventAccessApi(eventId, "guests:write");
+  if ("denied" in access) return access.denied;
 
   // Verify table
   const table = await prisma.table.findFirst({

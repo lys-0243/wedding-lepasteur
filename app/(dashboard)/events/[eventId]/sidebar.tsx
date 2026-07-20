@@ -9,6 +9,7 @@ import {
   Armchair,
   GlassWater,
   Scan,
+  Images,
   LogOut,
   Menu,
   type LucideIcon,
@@ -16,17 +17,20 @@ import {
 import { logoutAction } from "@/app/(auth)/actions";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import type { Permission } from "@/lib/event-permissions";
 
 type MenuItem = {
   label: string;
   href: string;
   icon: LucideIcon;
+  permission: Permission;
 };
 
 type SidebarProps = {
   eventId: string;
   eventTitle?: string | null;
   className?: string;
+  permissions?: readonly Permission[];
   user: {
     name: string | null;
     email: string;
@@ -34,35 +38,51 @@ type SidebarProps = {
   };
 };
 
-// ─── Menu items — ajouter une entrée ici pour l'afficher dans la sidebar ──────
 function buildMenu(eventId: string): MenuItem[] {
   return [
     {
       label: "Dashboard",
       href: `/events/${eventId}`,
       icon: LayoutDashboard,
+      permission: "event:read",
     },
     {
       label: "Tables",
       href: `/events/${eventId}/tables`,
       icon: Armchair,
+      permission: "tables:read",
     },
     {
       label: "Invités",
       href: `/events/${eventId}/guests`,
       icon: Users,
+      permission: "guests:read",
     },
     {
       label: "Boissons",
       href: `/events/${eventId}/drinks`,
       icon: GlassWater,
+      permission: "drinks:read",
     },
     {
       label: "Scanner",
       href: `/events/${eventId}/scanner`,
       icon: Scan,
+      permission: "checkin:read",
+    },
+    {
+      label: "Galerie",
+      href: `/events/${eventId}/gallery`,
+      icon: Images,
+      permission: "gallery:read",
     },
   ];
+}
+
+function filterMenu(eventId: string, permissions?: readonly Permission[]) {
+  const menu = buildMenu(eventId);
+  if (!permissions) return menu;
+  return menu.filter((item) => permissions.includes(item.permission));
 }
 
 export function Sidebar({
@@ -70,9 +90,10 @@ export function Sidebar({
   user,
   eventTitle,
   className,
+  permissions,
 }: SidebarProps) {
   const pathname = usePathname();
-  const menu = buildMenu(eventId);
+  const menu = filterMenu(eventId, permissions);
 
   const initials = (user.name ?? user.email)
     .split(" ")
@@ -88,7 +109,6 @@ export function Sidebar({
         className,
       )}
     >
-      {/* Profile */}
       <div className="flex flex-col items-center gap-2 border-b border-[#ffffff] px-6 py-6">
         {user.avatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -117,14 +137,16 @@ export function Sidebar({
                 {eventTitle}
               </p>
             </div>
-            <div className=" px-3 bg-blue-700 rounded-full">
-              <Link
-                href={`/events/${eventId}/edit`}
-                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium text-white transition-all hover:font-bold"
-              >
-                Modifier l'événement
-              </Link>
-            </div>
+            {permissions?.includes("event:write") && (
+              <div className=" px-3 bg-blue-700 rounded-full">
+                <Link
+                  href={`/events/${eventId}/edit`}
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium text-white transition-all hover:font-bold"
+                >
+                  Modifier l&apos;événement
+                </Link>
+              </div>
+            )}
             <div className="mb-3">
               <Link
                 href={`/`}
@@ -137,7 +159,6 @@ export function Sidebar({
         )}
       </div>
 
-      {/* Menu */}
       <nav className="flex-1 overflow-y-auto px-3 py-4">
         <p className="mb-2 px-3 text-[0.65rem] font-bold uppercase tracking-widest text-slate-400">
           Menu
@@ -173,7 +194,6 @@ export function Sidebar({
         </ul>
       </nav>
 
-      {/* Footer — edit link + Logout */}
       <div className="border-t border-[#E8ECF4] px-3 py-4">
         <form action={logoutAction}>
           <button
@@ -189,10 +209,15 @@ export function Sidebar({
   );
 }
 
-export function MobileNavSheet({ eventId, user, eventTitle }: SidebarProps) {
+export function MobileNavSheet({
+  eventId,
+  user,
+  eventTitle,
+  permissions,
+}: SidebarProps) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
-  const menu = buildMenu(eventId);
+  const menu = filterMenu(eventId, permissions);
 
   const initials = (user.name ?? user.email)
     .split(" ")
@@ -213,6 +238,7 @@ export function MobileNavSheet({ eventId, user, eventTitle }: SidebarProps) {
       >
         <div className="flex flex-col items-center gap-2 border-b border-[#E8ECF4] px-6 py-7 pt-12">
           {user.avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={user.avatarUrl}
               alt={user.name ?? "Avatar"}
@@ -240,15 +266,17 @@ export function MobileNavSheet({ eventId, user, eventTitle }: SidebarProps) {
                   {eventTitle}
                 </p>
               </div>
-              <div className="px-3 bg-blue-700 rounded-full">
-                <Link
-                  href={`/events/${eventId}/edit`}
-                  onClick={() => setOpen(false)}
-                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium text-white transition-all hover:font-bold"
-                >
-                  Modifier l&apos;événement
-                </Link>
-              </div>
+              {permissions?.includes("event:write") && (
+                <div className="px-3 bg-blue-700 rounded-full">
+                  <Link
+                    href={`/events/${eventId}/edit`}
+                    onClick={() => setOpen(false)}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium text-white transition-all hover:font-bold"
+                  >
+                    Modifier l&apos;événement
+                  </Link>
+                </div>
+              )}
               <div className="mb-3">
                 <Link
                   href={`/`}

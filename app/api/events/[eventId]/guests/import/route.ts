@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireEventAccessApi } from "@/lib/permissions";
 
 const importGuestsSchema = z.object({
   guests: z.array(
@@ -21,15 +21,9 @@ const importGuestsSchema = z.object({
 type RouteContext = { params: Promise<{ eventId: string }> };
 
 export async function POST(req: NextRequest, { params }: RouteContext) {
-  const user = await requireUser();
   const { eventId } = await params;
-
-  // Verify access
-  const event = await prisma.event.findFirst({
-    where: { id: eventId, userId: user.id },
-    select: { id: true },
-  });
-  if (!event) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const access = await requireEventAccessApi(eventId, "guests:write");
+  if ("denied" in access) return access.denied;
 
   const body = await req.json();
   const parsed = importGuestsSchema.safeParse(body);
