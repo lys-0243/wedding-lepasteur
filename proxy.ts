@@ -12,6 +12,8 @@ const PUBLIC_PATHS = [
   "/invite/",
   "/api/invite/",
   "/api/auth/",
+  "/g/",
+  "/api/gallery/",
 ];
 
 /** Routes réservées aux visiteurs non connectés (rediriger si connecté) */

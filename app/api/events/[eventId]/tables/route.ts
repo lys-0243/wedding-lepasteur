@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireEventAccessApi } from "@/lib/permissions";
 
 const createTableSchema = z.object({
   name: z.string().min(1, "Le nom est requis"),
@@ -12,14 +12,9 @@ type RouteContext = { params: Promise<{ eventId: string }> };
 
 // GET /api/events/[eventId]/tables — list all tables
 export async function GET(_req: NextRequest, { params }: RouteContext) {
-  const user = await requireUser();
   const { eventId } = await params;
-
-  const event = await prisma.event.findFirst({
-    where: { id: eventId, userId: user.id },
-    select: { id: true },
-  });
-  if (!event) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const access = await requireEventAccessApi(eventId, "tables:read");
+  if ("denied" in access) return access.denied;
 
   const tables = await prisma.table.findMany({
     where: { eventId },
@@ -53,14 +48,9 @@ export async function GET(_req: NextRequest, { params }: RouteContext) {
 
 // POST /api/events/[eventId]/tables — create a single table
 export async function POST(req: NextRequest, { params }: RouteContext) {
-  const user = await requireUser();
   const { eventId } = await params;
-
-  const event = await prisma.event.findFirst({
-    where: { id: eventId, userId: user.id },
-    select: { id: true },
-  });
-  if (!event) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const access = await requireEventAccessApi(eventId, "tables:write");
+  if ("denied" in access) return access.denied;
 
   const body = await req.json();
   const parsed = createTableSchema.safeParse(body);

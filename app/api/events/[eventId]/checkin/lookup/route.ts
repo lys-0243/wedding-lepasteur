@@ -1,27 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/auth";
+import { requireEventAccessApi } from "@/lib/permissions";
 
 type RouteContext = { params: Promise<{ eventId: string }> };
 
 export async function GET(_req: NextRequest, { params }: RouteContext) {
-  const user = await requireUser();
   const { eventId } = await params;
+  const access = await requireEventAccessApi(eventId, "checkin:read");
+  if ("denied" in access) return access.denied;
 
   const { searchParams } = new URL(_req.url);
   const token = searchParams.get("token");
 
   if (!token) {
     return NextResponse.json({ error: "Token manquant." }, { status: 400 });
-  }
-
-  const event = await prisma.event.findUnique({
-    where: { id: eventId },
-    select: { userId: true },
-  });
-
-  if (!event || event.userId !== user.id) {
-    return NextResponse.json({ error: "Non autorisé." }, { status: 403 });
   }
 
   const guest = await prisma.guest.findUnique({

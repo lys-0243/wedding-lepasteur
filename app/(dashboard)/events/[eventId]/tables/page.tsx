@@ -1,6 +1,5 @@
-import { notFound } from "next/navigation";
-import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireEventAccess } from "@/lib/permissions";
 import { TablesClient } from "@/components/tables/tables-client";
 import type { Metadata } from "next";
 
@@ -19,15 +18,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function TablesPage({ params }: Props) {
-  const user = await requireUser();
   const { eventId } = await params;
-
-  const event = await prisma.event.findFirst({
-    where: { id: eventId, userId: user.id },
-    select: { id: true },
-  });
-
-  if (!event) notFound();
+  const { membership } = await requireEventAccess(eventId, "tables:read");
 
   const tables = await prisma.table.findMany({
     where: { eventId },
@@ -58,7 +50,11 @@ export default async function TablesPage({ params }: Props) {
 
   return (
     <div className="min-h-full bg-[#F4F6FB] p-6 lg:p-8">
-      <TablesClient eventId={eventId} initialTables={mappedTables} />
+      <TablesClient
+        eventId={eventId}
+        initialTables={mappedTables}
+        canWriteTables={membership.role === "OWNER"}
+      />
     </div>
   );
 }

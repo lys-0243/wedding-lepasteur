@@ -64,6 +64,8 @@ type Guest = {
 type Props = {
   eventId: string;
   initialGuests: Guest[];
+  canEditGuests?: boolean;
+  canWriteGuests?: boolean;
   event?: {
     title: string;
     eventDate: string | null;
@@ -114,7 +116,13 @@ function guestHeads(g: { invitationType: string }) {
   return g.invitationType === "COUPLE" || g.invitationType === "DUO" ? 2 : 1;
 }
 
-export function GuestsClient({ eventId, initialGuests, event }: Props) {
+export function GuestsClient({
+  eventId,
+  initialGuests,
+  canEditGuests = false,
+  canWriteGuests = false,
+  event,
+}: Props) {
   const [guests, setGuests] = useState<Guest[]>(initialGuests);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
@@ -780,17 +788,18 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Import Excel */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setImportOpen(true)}
-            className="gap-2 border-[#E8ECF4] text-slate-600 hover:bg-slate-50 cursor-pointer h-10 px-4 rounded-xl"
-          >
-            <Upload className="h-4 w-4" />
-            <span className="hidden sm:inline">Importer Excel</span>
-            <span className="sm:hidden">Import</span>
-          </Button>
+          {canWriteGuests && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setImportOpen(true)}
+              className="gap-2 border-[#E8ECF4] text-slate-600 hover:bg-slate-50 cursor-pointer h-10 px-4 rounded-xl"
+            >
+              <Upload className="h-4 w-4" />
+              <span className="hidden sm:inline">Importer Excel</span>
+              <span className="sm:hidden">Import</span>
+            </Button>
+          )}
 
           {/* Export Excel */}
           <Button
@@ -816,15 +825,16 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
             <span className="sm:hidden">No-show</span>
           </Button>
 
-          {/* Ajouter un invité */}
-          <Button
-            size="sm"
-            onClick={() => setCreateOpen(true)}
-            className="gap-2 bg-[#1E5FF5] text-white hover:bg-[#154ED0] cursor-pointer h-10 px-4 rounded-xl"
-          >
-            <Plus className="h-4 w-4" />
-            Ajouter
-          </Button>
+          {canWriteGuests && (
+            <Button
+              size="sm"
+              onClick={() => setCreateOpen(true)}
+              className="gap-2 bg-[#1E5FF5] text-white hover:bg-[#154ED0] cursor-pointer h-10 px-4 rounded-xl"
+            >
+              <Plus className="h-4 w-4" />
+              Ajouter
+            </Button>
+          )}
         </div>
       </div>
 
@@ -1023,20 +1033,24 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
                   >
                     <Eye className="h-3.5 w-3.5" />
                   </button>
-                  <button
-                    onClick={() => openEdit(guest)}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-[#EEF0FF] hover:text-[#1E5FF5]"
-                    title="Modifier"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    onClick={() => setDeleteGuest(guest)}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-red-50 hover:text-red-500"
-                    title="Supprimer"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                  {canEditGuests && (
+                    <>
+                      <button
+                        onClick={() => openEdit(guest)}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-[#EEF0FF] hover:text-[#1E5FF5]"
+                        title="Modifier"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={() => setDeleteGuest(guest)}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                        title="Supprimer"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </>
+                  )}
                 </div>
               </li>
             ))}
@@ -1143,17 +1157,21 @@ export function GuestsClient({ eventId, initialGuests, event }: Props) {
           )}
 
           <DialogFooter className="bg-[#F8FAFC] border-t border-[#E8ECF4] px-6 py-4 flex justify-between gap-3 rounded-b-[24px] -mx-6 -mb-6 mt-6">
-            <Button
-              type="button"
-              onClick={() => {
-                if (viewGuest) openEdit(viewGuest);
-                setViewGuest(null);
-              }}
-              className="h-10 px-5 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors shadow-xs cursor-pointer gap-2"
-            >
-              <Pencil className="h-3.5 w-3.5" />
-              Modifier
-            </Button>
+            {canEditGuests ? (
+              <Button
+                type="button"
+                onClick={() => {
+                  if (viewGuest) openEdit(viewGuest);
+                  setViewGuest(null);
+                }}
+                className="h-10 px-5 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors shadow-xs cursor-pointer gap-2"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                Modifier
+              </Button>
+            ) : (
+              <span />
+            )}
             <Button
               type="button"
               onClick={() => setViewGuest(null)}

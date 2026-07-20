@@ -1,11 +1,14 @@
 import { EditEventForm } from "./edit-event-form";
 import { prisma } from "@/lib/prisma";
+import { requireEventAccess } from "@/lib/permissions";
 import { updateEventAction } from "../actions";
 import type { Metadata } from "next";
 
 type EditPageProps = { params: Promise<{ eventId: string }> };
 
-export async function generateMetadata({ params }: EditPageProps): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: EditPageProps): Promise<Metadata> {
   const { eventId } = await params;
   const event = await prisma.event.findUnique({
     where: { id: eventId },
@@ -15,22 +18,9 @@ export async function generateMetadata({ params }: EditPageProps): Promise<Metad
   return { title: `Modifier — ${event.title}` };
 }
 
-export default async function EditEventPage({ params }: { params: any }) {
-  // `params` can sometimes be a Promise or undefined depending on how the layout was invoked;
-  // support both shapes to avoid Prisma being invoked with `undefined`.
-  let eventId: string | undefined;
-  if (!params) {
-    eventId = undefined;
-  } else if (typeof (params as any).then === "function") {
-    const resolved = await params;
-    eventId = resolved?.eventId;
-  } else {
-    eventId = params.eventId;
-  }
-
-  if (!eventId) {
-    return <p>Identifiant d'événement manquant.</p>;
-  }
+export default async function EditEventPage({ params }: EditPageProps) {
+  const { eventId } = await params;
+  await requireEventAccess(eventId, "event:write");
 
   const event = await prisma.event.findUnique({
     where: { id: eventId },
@@ -74,7 +64,7 @@ export default async function EditEventPage({ params }: { params: any }) {
         <div className="rounded-3xl border border-[#DEE4EF] bg-[#F7F8FC] p-5 sm:p-6">
           <div className="mb-6 flex items-center justify-between gap-3">
             <h1 className="text-[1.45rem] font-semibold tracking-[-0.02em] text-slate-800 sm:text-[1.6rem]">
-              Modifier l'événement
+              Modifier l&apos;événement
             </h1>
           </div>
 

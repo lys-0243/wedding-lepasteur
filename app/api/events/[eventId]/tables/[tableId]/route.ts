@@ -1,19 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
+import { requireEventAccessApi } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
 type RouteContext = { params: Promise<{ eventId: string; tableId: string }> };
 
 // DELETE /api/events/[eventId]/tables/[tableId]
 export async function DELETE(_req: NextRequest, { params }: RouteContext) {
-  const user = await requireUser();
   const { eventId, tableId } = await params;
-
-  const event = await prisma.event.findFirst({
-    where: { id: eventId, userId: user.id },
-    select: { id: true },
-  });
-  if (!event) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const access = await requireEventAccessApi(eventId, "tables:write");
+  if ("denied" in access) return access.denied;
 
   const table = await prisma.table.findFirst({
     where: { id: tableId, eventId },
@@ -27,14 +22,9 @@ export async function DELETE(_req: NextRequest, { params }: RouteContext) {
 
 // PATCH /api/events/[eventId]/tables/[tableId]
 export async function PATCH(req: NextRequest, { params }: RouteContext) {
-  const user = await requireUser();
   const { eventId, tableId } = await params;
-
-  const event = await prisma.event.findFirst({
-    where: { id: eventId, userId: user.id },
-    select: { id: true },
-  });
-  if (!event) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const access = await requireEventAccessApi(eventId, "tables:write");
+  if ("denied" in access) return access.denied;
 
   const body = await req.json();
   const { name, capacity } = body as { name?: string; capacity?: number };
@@ -52,7 +42,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
   } catch {
     return NextResponse.json(
       { error: "Une table avec ce nom existe déjà." },
-      { status: 409 }
+      { status: 409 },
     );
   }
 }
