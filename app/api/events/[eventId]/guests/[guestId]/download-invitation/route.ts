@@ -106,7 +106,8 @@ async function createQrCodePage(
   const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
   const titleSize = 18;
-  const title = "Scannez ce code pour valider votre presence";
+  const title =
+    "Présentez ce code QR au responsable du protocole avant d'entrer dans la salle";
   const titleWidth = font.widthOfTextAtSize(title, titleSize);
   page.drawText(title, {
     x: (A4_WIDTH - titleWidth) / 2,
